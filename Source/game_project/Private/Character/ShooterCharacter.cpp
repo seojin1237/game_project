@@ -56,6 +56,14 @@ void AShooterCharacter::PossessedBy(AController* NewController)
 		// ASC에게 "누가 소유자(Owner)이고, 누가 실제로 움직이는 몸(Avatar)인지" 알려준다.
 		// 이 캐릭터는 ASC를 직접 들고 있으므로 둘 다 this.
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+		// 어빌리티 등록(Grant): "이 캐릭터는 이 어빌리티를 사용할 수 있다"고 ASC에 알려준다.
+		// 등록만 하는 것이고, 실행(Activate)은 입력이 들어왔을 때 따로 한다
+		if (FireAbility)
+		{
+			// Spec = 어빌리티 클래스 + 레벨(1)을 묶은 "등록 정보"
+			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(FireAbility, 1));
+		}
 	}
 }
 
@@ -63,13 +71,13 @@ void AShooterCharacter::NotifyControllerChanged()
 {
 	Super::NotifyControllerChanged();
 
-	// 플레이어가 조종할 때만 (AI 컨트롤러면 Cast 실패 → 무시)
 	// BP에서 IMC를 아직 지정 안 했으면 아무것도 안 함
 	if (!DefaultMappingContext)
 	{
 		return;
 	}
 
+	// 플레이어가 조종할 때만 (AI 컨트롤러면 Cast 실패 → 무시)
 	if (APlayerController* PC = Cast<APlayerController>(Controller))
 	{
 		// Enhanced Input 서브시스템은 LocalPlayer(이 PC 앞에 앉은 플레이어)마다 하나씩 있다
@@ -97,6 +105,9 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		// Jump/StopJumping은 부모(ACharacter)에 이미 있는 함수를 그대로 연결
 		EIC->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+
+		// 클릭한 순간 1번 사격 (연사는 나중에 어빌리티 쪽에서 처리)
+		EIC->BindAction(FireAction, ETriggerEvent::Started, this, &AShooterCharacter::Fire);
 	}
 }
 
@@ -124,6 +135,16 @@ void AShooterCharacter::Look(const FInputActionValue& Value)
 
 	AddControllerYawInput(Axis.X);
 	AddControllerPitchInput(Axis.Y);
+}
+
+void AShooterCharacter::Fire()
+{
+	if (AbilitySystemComponent && FireAbility)
+	{
+		// 등록된 어빌리티 중 이 클래스를 찾아 실행 시도.
+		// 쿨타임 중이거나 실행 조건이 안 맞으면 GAS가 알아서 거부한다 (반환값 false)
+		AbilitySystemComponent->TryActivateAbilityByClass(FireAbility);
+	}
 }
 
 void AShooterCharacter::DebugDamage()

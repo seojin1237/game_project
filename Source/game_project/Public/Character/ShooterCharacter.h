@@ -8,6 +8,7 @@
 class UAbilitySystemComponent;
 class UShooterAttributeSet;
 class UGameplayEffect;
+class UGameplayAbility;
 class USpringArmComponent;
 class UCameraComponent;
 class UInputMappingContext;
@@ -48,6 +49,7 @@ protected:
 	// 입력 처리 함수들 (Input Action이 발동되면 호출됨)
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
+	void Fire();
 
 	// ===== 카메라 =====
 
@@ -82,6 +84,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> JumpAction;
 
+	// 사격 (마우스 왼쪽, bool)
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> FireAction;
+
 	// ===== GAS =====
 
 	// VisibleAnywhere   : 에디터 디테일 패널에서 보이기만 함 (컴포넌트 자체를 다른 걸로 교체 불가)
@@ -93,6 +99,12 @@ protected:
 	// 체력 등 스탯 묶음 (지정자 의미는 위와 동일)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UShooterAttributeSet> AttributeSet;
+
+	// 사격 어빌리티 클래스 (BP에서 GA_Fire 지정). 게임 시작 시 ASC에 등록(Grant)된다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "GAS|Abilities" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities")
+	TSubclassOf<UGameplayAbility> FireAbility;
 
 	// [테스트용] DebugDamage에서 적용할 GameplayEffect 클래스 (BP에서 GE_Damage 지정)
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능 (레벨에 배치된 개별 인스턴스에선 수정 불가)
