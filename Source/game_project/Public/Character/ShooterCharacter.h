@@ -7,6 +7,7 @@
 
 class UAbilitySystemComponent;
 class UShooterAttributeSet;
+class UGameplayEffect;
 
 /**
  * 플레이어 캐릭터.
@@ -24,6 +25,11 @@ public:
 	// IAbilitySystemInterface 구현: GAS 시스템이 이 함수로 캐릭터의 ASC를 찾아간다
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
+	// [테스트용] 콘솔(~ 키)에 DebugDamage 입력 시 DebugDamageEffect를 자기 자신에게 적용
+	// Exec : 콘솔 명령어로 호출 가능 (PlayerController, 빙의된 Pawn, GameMode 등에서만 동작)
+	UFUNCTION(Exec)
+	void DebugDamage();
+
 protected:
 	// 컨트롤러가 이 캐릭터에 빙의(Possess)했을 때 호출된다
 	virtual void PossessedBy(AController* NewController) override;
@@ -37,4 +43,10 @@ protected:
 	// 체력 등 스탯 묶음 (지정자 의미는 위와 동일)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UShooterAttributeSet> AttributeSet;
+
+	// [테스트용] DebugDamage에서 적용할 GameplayEffect 클래스 (BP에서 GE_Damage 지정)
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능 (레벨에 배치된 개별 인스턴스에선 수정 불가)
+	// Category         : "GAS|Debug" 하위 그룹으로 표시 (| 는 그룹 안의 그룹)
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Debug")
+	TSubclassOf<UGameplayEffect> DebugDamageEffect;
 };

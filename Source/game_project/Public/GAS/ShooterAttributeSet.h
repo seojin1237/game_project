@@ -19,6 +19,12 @@ class GAME_PROJECT_API UShooterAttributeSet : public UAttributeSet
 public:
 	UShooterAttributeSet();
 
+	// CurrentValue가 바뀌기 "직전"에 호출 (지속형 버프/디버프 등) → 값 범위 제한용
+	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
+
+	// Instant GameplayEffect가 BaseValue를 바꾼 "직후"에 호출 → 데미지 결과 처리용
+	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
+
 	// 현재 체력
 	// BlueprintReadOnly : 블루프린트에서 읽기만 가능 (값 변경은 반드시 GameplayEffect로)
 	// Category          : 블루프린트에서 "Attributes" 그룹으로 표시

@@ -31,3 +31,25 @@ void AShooterCharacter::PossessedBy(AController* NewController)
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	}
 }
+
+void AShooterCharacter::DebugDamage()
+{
+	if (!AbilitySystemComponent || !DebugDamageEffect)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[GAS] DebugDamageEffect가 비어 있습니다. BP에서 GE_Damage를 지정하세요."));
+		return;
+	}
+
+	// 1) Context: "누가, 무엇으로" 이 효과를 일으켰는지 담는 정보
+	FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+	Context.AddSourceObject(this);
+
+	// 2) Spec: GE 클래스(설계도) + 레벨 + Context를 묶은 "적용 준비가 끝난 실제 효과"
+	FGameplayEffectSpecHandle Spec = AbilitySystemComponent->MakeOutgoingSpec(DebugDamageEffect, 1.f, Context);
+
+	// 3) 적용: 지금은 테스트라 자기 자신에게
+	if (Spec.IsValid())
+	{
+		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+	}
+}
