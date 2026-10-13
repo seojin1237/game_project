@@ -1,0 +1,28 @@
+# ===== Visual Studio / IDE =====
+.vs/
+.vscode/
+.idea/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+*.user
+
+# ===== Unreal 자동 생성 폴더 =====
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# 플러그인 안의 자동 생성 폴더
+Plugins/**/Binaries/
+Plugins/**/Intermediate/
+
+# ===== 기타 =====
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
