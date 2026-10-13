@@ -6,6 +6,7 @@
 #include "ShooterCharacter.generated.h"
 
 class UAbilitySystemComponent;
+class UShooterAttributeSet;
 
 /**
  * 플레이어 캐릭터.
@@ -32,4 +33,8 @@ protected:
 	// Category          : 디테일 패널/블루프린트에서 "GAS" 그룹으로 묶어서 표시
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
+
+	// 체력 등 스탯 묶음 (지정자 의미는 위와 동일)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
+	TObjectPtr<UShooterAttributeSet> AttributeSet;
 };
