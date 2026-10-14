@@ -29,6 +29,9 @@ void UShooterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 		// Instant 효과는 PreAttributeChange를 거치지 않으므로 여기서 한 번 더 0 ~ MaxHealth로 제한
 		SetHealth(FMath::Clamp(GetHealth(), 0.f, GetMaxHealth()));
 
-		UE_LOG(LogTemp, Log, TEXT("[GAS] Health: %.1f / %.1f"), GetHealth(), GetMaxHealth());
+		// 플레이어/과녁 등 여러 액터가 같은 AttributeSet을 쓰므로 누구의 체력인지 이름도 출력
+		// GetNameSafe: 포인터가 nullptr이어도 크래시 없이 "None"을 돌려준다
+		UE_LOG(LogTemp, Log, TEXT("[GAS] %s Health: %.1f / %.1f"),
+			*GetNameSafe(GetOwningActor()), GetHealth(), GetMaxHealth());
 	}
 }
