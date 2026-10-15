@@ -106,8 +106,9 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EIC->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 
-		// 클릭한 순간 1번 사격 (연사는 나중에 어빌리티 쪽에서 처리)
-		EIC->BindAction(FireAction, ETriggerEvent::Started, this, &AShooterCharacter::Fire);
+		// 누르고 있는 동안 매 프레임 사격 시도 → 쿨타임 GE(GE_Cooldown_Fire)가 발사 간격을 걸러준다
+		// TODO: 무기 클래스를 만들 때 단발/연사 여부를 무기 설정으로 옮길 것
+		EIC->BindAction(FireAction, ETriggerEvent::Triggered, this, &AShooterCharacter::Fire);
 	}
 }
 
