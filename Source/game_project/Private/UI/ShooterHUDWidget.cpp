@@ -1,0 +1,117 @@
+#include "UI/ShooterHUDWidget.h"
+#include "AbilitySystemComponent.h"
+#include "GAS/ShooterAttributeSet.h"
+#include "GAS/ShooterGameplayTags.h"
+#include "Components/ProgressBar.h"
+#include "Components/TextBlock.h"
+
+void UShooterHUDWidget::BindToAbilitySystem(UAbilitySystemComponent* InASC)
+{
+	// 이미 다른 ASC를 구독 중이면 먼저 끊는다 (캐릭터가 바뀌는 경우 대비, 중복 구독 방지)
+	UnbindFromAbilitySystem();
+
+	BoundASC = InASC;
+	if (!InASC)
+	{
+		return;
+	}
+
+	// 1) Health, MaxHealth가 바뀔 때마다 알림 받기
+	//    AddUObject: "이 객체(this)의 이 멤버 함수를 불러줘" 등록. 반환값(번호표)을 저장해 두었다가 해제할 때 사용
+	HealthChangedHandle = InASC->GetGameplayAttributeValueChangeDelegate(UShooterAttributeSet::GetHealthAttribute())
+		.AddUObject(this, &UShooterHUDWidget::HandleHealthAttributeChanged);
+	MaxHealthChangedHandle = InASC->GetGameplayAttributeValueChangeDelegate(UShooterAttributeSet::GetMaxHealthAttribute())
+		.AddUObject(this, &UShooterHUDWidget::HandleHealthAttributeChanged);
+
+	// 2) State.Dead 태그가 붙거나 떨어질 때 알림 받기 (GameplayTag 이벤트 구독)
+	//    NewOrRemoved: 태그가 "새로 생기거나(0→1) 완전히 사라질 때(1→0)"만 알림. 개수 변화마다 받는 AnyCountChange도 있다
+	DeadTagHandle = InASC->RegisterGameplayTagEvent(ShooterTags::State_Dead, EGameplayTagEventType::NewOrRemoved)
+		.AddUObject(this, &UShooterHUDWidget::HandleDeadTagChanged);
+
+	// 3) 구독은 "앞으로의 변화"만 알려주므로, 현재 값으로 한 번 초기화
+	RefreshHealth();
+
+	// 사망 텍스트는 처음엔 숨김 (이미 죽은 캐릭터에 연결된 경우는 보여줌)
+	if (DeathText)
+	{
+		const bool bAlreadyDead = InASC->HasMatchingGameplayTag(ShooterTags::State_Dead);
+		DeathText->SetVisibility(bAlreadyDead ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+}
+
+void UShooterHUDWidget::NativeDestruct()
+{
+	// 위젯이 사라질 때 구독을 해제하지 않으면, ASC가 이미 없어진 위젯 함수를 부르려다 문제가 생길 수 있다
+	UnbindFromAbilitySystem();
+	Super::NativeDestruct();
+}
+
+void UShooterHUDWidget::UnbindFromAbilitySystem()
+{
+	// Weak 포인터에서 실제 포인터 꺼내기. ASC가 이미 삭제됐으면 nullptr → 해제할 것도 없음
+	if (UAbilitySystemComponent* ASC = BoundASC.Get())
+	{
+		ASC->GetGameplayAttributeValueChangeDelegate(UShooterAttributeSet::GetHealthAttribute()).Remove(HealthChangedHandle);
+		ASC->GetGameplayAttributeValueChangeDelegate(UShooterAttributeSet::GetMaxHealthAttribute()).Remove(MaxHealthChangedHandle);
+		ASC->RegisterGameplayTagEvent(ShooterTags::State_Dead, EGameplayTagEventType::NewOrRemoved).Remove(DeadTagHandle);
+	}
+
+	// 번호표 초기화 (Reset = "아무것도 가리키지 않는 상태"로)
+	HealthChangedHandle.Reset();
+	MaxHealthChangedHandle.Reset();
+	DeadTagHandle.Reset();
+	BoundASC.Reset();
+}
+
+void UShooterHUDWidget::HandleHealthAttributeChanged(const FOnAttributeChangeData& Data)
+{
+	// Health와 MaxHealth 중 무엇이 바뀌었든 두 값을 다시 읽어서 갱신하면 된다 (단순하고 실수가 없음)
+	RefreshHealth();
+}
+
+void UShooterHUDWidget::HandleDeadTagChanged(const FGameplayTag Tag, int32 NewCount)
+{
+	// NewCount > 0 → 태그가 붙음 = 방금 사망
+	if (NewCount > 0)
+	{
+		if (DeathText)
+		{
+			// HitTestInvisible: 보이지만 마우스 클릭은 통과 (UI가 클릭을 가로채지 않게)
+			DeathText->SetVisibility(ESlateVisibility::HitTestInvisible);
+		}
+
+		// 추가 연출은 BP에 맡김
+		OnOwnerDied();
+	}
+}
+
+void UShooterHUDWidget::RefreshHealth()
+{
+	UAbilitySystemComponent* ASC = BoundASC.Get();
+	if (!ASC)
+	{
+		return;
+	}
+
+	// GetNumericAttribute: ASC에 등록된 AttributeSet에서 해당 스탯의 현재값(CurrentValue)을 읽는다
+	const float Health = ASC->GetNumericAttribute(UShooterAttributeSet::GetHealthAttribute());
+	const float MaxHealth = ASC->GetNumericAttribute(UShooterAttributeSet::GetMaxHealthAttribute());
+
+	// Progress Bar는 0.0 ~ 1.0 비율로 채워진다. MaxHealth가 0이면 나눗셈 오류 방지
+	const float Percent = MaxHealth > 0.f ? Health / MaxHealth : 0.f;
+
+	if (HealthBar)
+	{
+		HealthBar->SetPercent(Percent);
+	}
+
+	if (HealthText)
+	{
+		// FText::FromString: 화면에 표시할 텍스트 생성. FString::Printf는 C#의 string.Format과 같음
+		// %.0f = 소수점 없이 표시 (80.0 → "80")
+		HealthText->SetText(FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Health, MaxHealth)));
+	}
+
+	// BP 연출용 이벤트
+	OnHealthUpdated(Health, MaxHealth);
+}

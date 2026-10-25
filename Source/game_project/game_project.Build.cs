@@ -22,10 +22,14 @@ public class game_project : ModuleRules
 			"GameplayTasks",      // 어빌리티 안에서 쓰는 비동기 작업 (몽타주 재생 후 대기 등)
 
 			// ===== AI =====
-			"AIModule"            // AAIController, MoveToActor, Behavior Tree 등 AI 기본 기능
+			"AIModule",           // AAIController, MoveToActor, Behavior Tree 등 AI 기본 기능
+
+			// ===== UI =====
+			"UMG"                 // UUserWidget, UProgressBar, UTextBlock 등 위젯(WBP_) 기능
 		});
 
-        PrivateDependencyModuleNames.AddRange(new string[] { });
+        // UMG 내부가 사용하는 저수준 UI 프레임워크 (헤더에 노출하지 않으므로 Private)
+        PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 
         // Uncomment if you are using Slate UI
         // PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
