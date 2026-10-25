@@ -7,6 +7,7 @@
 
 class UAbilitySystemComponent;
 class UShooterAttributeSet;
+class UGameplayEffect;
 class AShooterCharacterBase;
 struct FOnAttributeChangeData;
 
@@ -53,6 +54,12 @@ protected:
 	// ASC가 Health 값이 바뀔 때마다 호출해주는 함수 (BeginPlay에서 구독)
 	void OnHealthChanged(const FOnAttributeChangeData& Data);
 
+	// ASC가 MoveSpeed 값이 바뀔 때마다 호출 → CharacterMovement 속도에 반영
+	void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
+
+	// DefaultAttributesEffect를 자기 자신에게 1번 적용해서 초기 스탯을 세팅
+	void InitializeAttributes();
+
 	// 사망 로직 (C++). virtual이라 자식 클래스가 동작을 추가할 수 있다
 	virtual void Die();
 
@@ -72,4 +79,15 @@ protected:
 	// 체력 등 스탯 묶음 (지정자 의미는 위와 동일)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UShooterAttributeSet> AttributeSet;
+
+	// 초기 스탯 GE (BP에서 GE_InitStats_Player / GE_InitStats_Enemy 지정).
+	// Instant + Override 모디파이어로 체력/공격력/속도 등을 이 캐릭터 고유 값으로 덮어쓴다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "GAS" 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<UGameplayEffect> DefaultAttributesEffect;
+
+private:
+	// 초기 스탯을 이미 적용했는지 (재빙의 시 체력이 다시 가득 차는 것 방지)
+	bool bAttributesInitialized = false;
 };

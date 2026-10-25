@@ -36,4 +36,23 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
 	FGameplayAttributeData MaxHealth;
 	ATTRIBUTE_ACCESSORS_BASIC(UShooterAttributeSet, MaxHealth)
+
+	// 공격력: 이 캐릭터가 GE_Damage를 적용할 때 대상 체력에서 빠지는 양
+	// (GE_Damage의 Magnitude가 AttributeBased로 "공격자(Source)의 AttackPower"를 읽는다)
+	// 업그레이드 예: "공격력 +20%" = AttackPower에 1.2를 곱하는 Infinite GE (지정자 의미는 위와 동일)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat")
+	FGameplayAttributeData AttackPower;
+	ATTRIBUTE_ACCESSORS_BASIC(UShooterAttributeSet, AttackPower)
+
+	// 사격 간격(초). 작을수록 빨리 쏜다
+	// (GE_Cooldown_Fire의 Duration이 AttributeBased로 이 값을 읽는다) (지정자 의미는 위와 동일)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat")
+	FGameplayAttributeData FireInterval;
+	ATTRIBUTE_ACCESSORS_BASIC(UShooterAttributeSet, FireInterval)
+
+	// 이동 속도(cm/s). 값이 바뀌면 캐릭터가 CharacterMovement의 MaxWalkSpeed에 반영한다
+	// (지정자 의미는 위와 동일)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Movement")
+	FGameplayAttributeData MoveSpeed;
+	ATTRIBUTE_ACCESSORS_BASIC(UShooterAttributeSet, MoveSpeed)
 };

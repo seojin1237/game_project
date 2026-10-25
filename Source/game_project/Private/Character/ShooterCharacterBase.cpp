@@ -39,6 +39,10 @@ void AShooterCharacterBase::BeginPlay()
 		// BeginPlay는 한 번만 호출되므로 중복 구독 걱정이 없다
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UShooterAttributeSet::GetHealthAttribute())
 			.AddUObject(this, &AShooterCharacterBase::OnHealthChanged);
+
+		// 이동 속도 업그레이드/슬로우 디버프 등이 MoveSpeed를 바꾸면 실제 이동 속도에도 반영
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UShooterAttributeSet::GetMoveSpeedAttribute())
+			.AddUObject(this, &AShooterCharacterBase::OnMoveSpeedChanged);
 	}
 }
 
@@ -51,7 +55,42 @@ void AShooterCharacterBase::PossessedBy(AController* NewController)
 		// ASC에게 "누가 소유자(Owner)이고, 누가 실제로 움직이는 몸(Avatar)인지" 알려준다.
 		// 플레이어든 AI든 캐릭터가 ASC를 직접 들고 있으므로 둘 다 this.
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+		// ASC 준비가 끝났으니 초기 스탯 적용
+		InitializeAttributes();
 	}
+}
+
+void AShooterCharacterBase::InitializeAttributes()
+{
+	// 이미 적용했거나, BP에서 초기 스탯 GE를 지정하지 않았으면 AttributeSet 생성자의 기본값을 그대로 사용
+	if (bAttributesInitialized || !AbilitySystemComponent || !DefaultAttributesEffect)
+	{
+		return;
+	}
+
+	// 자기 자신에게 GE 적용 (DebugDamage와 같은 Context → Spec → Apply 흐름)
+	FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+	Context.AddSourceObject(this);
+	const FGameplayEffectSpecHandle Spec = AbilitySystemComponent->MakeOutgoingSpec(DefaultAttributesEffect, 1.f, Context);
+	if (Spec.IsValid())
+	{
+		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+		bAttributesInitialized = true;
+	}
+
+	// 주의: 빙의(PossessedBy)는 BeginPlay보다 먼저 일어나서, BeginPlay에서 구독하는 OnMoveSpeedChanged가
+	// 이 초기화 변화를 못 받는다. 그래서 여기서 한 번 직접 반영해준다
+	if (AttributeSet)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = AttributeSet->GetMoveSpeed();
+	}
+}
+
+void AShooterCharacterBase::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
+{
+	// GAS의 MoveSpeed(스탯) → 엔진의 CharacterMovement(실제 이동) 로 연결하는 다리 역할
+	GetCharacterMovement()->MaxWalkSpeed = Data.NewValue;
 }
 
 void AShooterCharacterBase::OnHealthChanged(const FOnAttributeChangeData& Data)
