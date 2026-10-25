@@ -43,4 +43,10 @@ public:
 	// 선택했을 때 플레이어에게 적용할 GameplayEffect (보통 Infinite = 영구 버프) (지정자 의미는 위와 동일)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Upgrade")
 	TSubclassOf<UGameplayEffect> Effect;
+
+	// [선택] Effect와 함께 추가로 적용할 GE들 (Effect 다음에 순서대로 적용)
+	// 예: "최대 체력 +25" (Infinite) + "체력 25 회복" (Instant) 처럼 성격이 다른 효과를 한 카드에 묶을 때
+	// (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Upgrade")
+	TArray<TSubclassOf<UGameplayEffect>> AdditionalEffects;
 };

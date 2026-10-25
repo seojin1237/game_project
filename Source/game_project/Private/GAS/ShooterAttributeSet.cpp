@@ -10,6 +10,7 @@ UShooterAttributeSet::UShooterAttributeSet()
 	InitAttackPower(20.f);
 	InitFireInterval(0.2f);
 	InitMoveSpeed(600.f);
+	InitKillHeal(0.f);
 }
 
 void UShooterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -37,6 +38,10 @@ void UShooterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribut
 	else if (Attribute == GetMoveSpeedAttribute())
 	{
 		NewValue = FMath::Max(NewValue, 0.f);       // 음수 속도 방지
+	}
+	else if (Attribute == GetKillHealAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.f);       // 음수(처치할 때마다 피해) 방지
 	}
 }
 

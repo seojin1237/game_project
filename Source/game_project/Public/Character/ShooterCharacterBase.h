@@ -53,6 +53,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Upgrade")
 	bool ApplyUpgrade(const UShooterUpgradeData* Upgrade);
 
+	// 체력 회복 (최대 체력을 넘지 않음). 흡혈 업그레이드, 회복 아이템 등에서 사용
+	// BlueprintCallable : 블루프린트에서 호출 가능 / Category : "Character" 그룹으로 표시
+	UFUNCTION(BlueprintCallable, Category = "Character")
+	void Heal(float Amount);
+
 protected:
 	virtual void BeginPlay() override;
 

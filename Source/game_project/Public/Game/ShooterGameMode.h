@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "Game/ShooterWaveTypes.h" // FShooterWaveEnemyEntry를 멤버 변수(값)로 들고 있으므로 전방 선언으론 부족
 #include "ShooterGameMode.generated.h"
 
 class UDataTable;
@@ -130,8 +131,16 @@ private:
 	int32 EnemiesAlive = 0;         // 스폰되어 살아있는 적 수
 
 	// 이번 웨이브 설정 (표에서 읽어온 값)
+	// UPROPERTY() : 가비지 컬렉터가 추적하도록 (클래스 참조도 UObject라 필요)
 	UPROPERTY()
 	TSubclassOf<AShooterEnemy> CurrentEnemyClass;
+
+	// 이번 웨이브의 적 구성표 (비어 있으면 CurrentEnemyClass만 사용) (지정자 의미는 위와 동일)
+	UPROPERTY()
+	TArray<FShooterWaveEnemyEntry> CurrentEnemyMix;
+
+	// 이번에 스폰할 적 종류 하나를 고른다 (구성표가 있으면 비중대로 랜덤)
+	TSubclassOf<AShooterEnemy> PickEnemyClass() const;
 
 	// 레벨에 배치된 스폰 지점(TargetPoint)들
 	// UPROPERTY() : 가비지 컬렉터가 추적하도록 (UObject 포인터 배열 멤버엔 필수)

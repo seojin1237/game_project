@@ -96,20 +96,47 @@ bool AShooterCharacterBase::ApplyUpgrade(const UShooterUpgradeData* Upgrade)
 		return false;
 	}
 
-	// 초기 스탯과 같은 방식으로 자기 자신에게 GE 적용.
-	// 업그레이드 GE는 Infinite라서 적용된 뒤 계속 남아 있고, 같은 업그레이드를 또 고르면 또 하나가 쌓인다
+	// 적용할 GE 목록 = 메인 Effect + 추가 Effect들 (순서대로)
+	// 예: 최대 체력 +25(Infinite)를 먼저 적용해야, 뒤의 회복(Instant)이 늘어난 최대 체력까지 채울 수 있다
+	TArray<TSubclassOf<UGameplayEffect>> EffectsToApply;
+	EffectsToApply.Add(Upgrade->Effect);
+	EffectsToApply.Append(Upgrade->AdditionalEffects);
+
 	FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
 	Context.AddSourceObject(this);
-	const FGameplayEffectSpecHandle Spec = AbilitySystemComponent->MakeOutgoingSpec(Upgrade->Effect, 1.f, Context);
-	if (!Spec.IsValid())
+
+	for (const TSubclassOf<UGameplayEffect>& EffectClass : EffectsToApply)
 	{
-		return false;
+		if (!EffectClass)
+		{
+			continue; // 배열에 비어 있는 칸이 있으면 건너뜀
+		}
+
+		// 초기 스탯과 같은 방식으로 자기 자신에게 GE 적용.
+		// Infinite GE는 적용된 뒤 계속 남아 있고, 같은 업그레이드를 또 고르면 또 하나가 쌓인다
+		const FGameplayEffectSpecHandle Spec = AbilitySystemComponent->MakeOutgoingSpec(EffectClass, 1.f, Context);
+		if (Spec.IsValid())
+		{
+			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+		}
 	}
-	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
 
 	// ToString(): FText → FString 변환 (로그 출력용)
 	UE_LOG(LogTemp, Log, TEXT("[Upgrade] %s 적용: %s"), *GetName(), *Upgrade->DisplayName.ToString());
 	return true;
+}
+
+void AShooterCharacterBase::Heal(float Amount)
+{
+	if (Amount <= 0.f || IsDead() || !AbilitySystemComponent)
+	{
+		return;
+	}
+
+	// ApplyModToAttribute: GE 에셋 없이 "이 Attribute에 이만큼 더해라"를 바로 적용하는 간단한 방법.
+	// 내부적으로 임시 Instant GE를 만들어 실행하므로 PostGameplayEffectExecute(0~MaxHealth 제한)도 그대로 거친다.
+	// 회복량이 매번 달라지는(=KillHeal 값에 따라 바뀌는) 경우에 GE 에셋을 따로 만들 필요가 없어 편하다
+	AbilitySystemComponent->ApplyModToAttribute(UShooterAttributeSet::GetHealthAttribute(), EGameplayModOp::Additive, Amount);
 }
 
 void AShooterCharacterBase::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)

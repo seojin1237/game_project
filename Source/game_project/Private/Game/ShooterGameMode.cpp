@@ -5,6 +5,8 @@
 #include "Character/ShooterEnemy.h"
 #include "Engine/DataTable.h"
 #include "GAS/ShooterUpgradeData.h"
+#include "GAS/ShooterAttributeSet.h"
+#include "AbilitySystemComponent.h"
 #include "Engine/TargetPoint.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
@@ -77,6 +79,7 @@ void AShooterGameMode::StartNextWave()
 	const int32 WavesBeyondTable = FMath::Max(0, CurrentWave - RowNames.Num());
 	EnemiesLeftToSpawn = Row->EnemyCount + WavesBeyondTable * ExtraEnemiesPerWaveAfterTable;
 	CurrentEnemyClass = Row->EnemyClass;
+	CurrentEnemyMix = Row->EnemyMix;
 
 	UE_LOG(LogTemp, Log, TEXT("[Wave] %d웨이브 시작 - 적 %d마리"), CurrentWave, EnemiesLeftToSpawn);
 	BroadcastWaveState();
@@ -87,8 +90,11 @@ void AShooterGameMode::StartNextWave()
 
 void AShooterGameMode::SpawnEnemy()
 {
+	// 이번에 스폰할 적 종류 결정 (구성표가 있으면 비중대로 랜덤)
+	const TSubclassOf<AShooterEnemy> EnemyClass = PickEnemyClass();
+
 	// 다 스폰했거나, 설정이 비었거나, 플레이어가 죽었으면 스폰 중단
-	if (EnemiesLeftToSpawn <= 0 || !CurrentEnemyClass || SpawnPoints.IsEmpty() || IsPlayerDead())
+	if (EnemiesLeftToSpawn <= 0 || !EnemyClass || SpawnPoints.IsEmpty() || IsPlayerDead())
 	{
 		GetWorldTimerManager().ClearTimer(SpawnTimerHandle);
 		return;
@@ -108,7 +114,7 @@ void AShooterGameMode::SpawnEnemy()
 	// SpawnActor<타입>(클래스, 위치, 회전, 옵션): 게임 중에 액터 생성 (Unity의 Instantiate(prefab, pos, rot))
 	// 적은 AutoPossessAI = PlacedInWorldOrSpawned 설정이라 스폰되자마자 AI 컨트롤러가 자동으로 붙는다
 	AShooterEnemy* Enemy = GetWorld()->SpawnActor<AShooterEnemy>(
-		CurrentEnemyClass, Point->GetActorLocation(), Point->GetActorRotation(), Params);
+		EnemyClass, Point->GetActorLocation(), Point->GetActorRotation(), Params);
 
 	if (Enemy)
 	{
@@ -122,9 +128,66 @@ void AShooterGameMode::SpawnEnemy()
 	BroadcastWaveState();
 }
 
+TSubclassOf<AShooterEnemy> AShooterGameMode::PickEnemyClass() const
+{
+	// 1) 비중 합계 구하기 (비어 있는 칸, 비중 0인 칸은 제외)
+	float TotalWeight = 0.f;
+	for (const FShooterWaveEnemyEntry& Entry : CurrentEnemyMix)
+	{
+		if (Entry.EnemyClass && Entry.Weight > 0.f)
+		{
+			TotalWeight += Entry.Weight;
+		}
+	}
+
+	// 구성표가 비었으면 기본 적 하나만 사용
+	if (TotalWeight <= 0.f)
+	{
+		return CurrentEnemyClass;
+	}
+
+	// 2) 가중치 랜덤 (룰렛 방식): 0~합계 사이 숫자를 뽑고, 비중을 차례로 빼다가 0 이하가 되는 칸을 선택
+	//    예: 비중 2,2,1 → 0~5 중 Roll=3.4 → 3.4-2=1.4 → 1.4-2=-0.6 → 두 번째 칸 당첨
+	float Roll = FMath::FRandRange(0.f, TotalWeight);
+	for (const FShooterWaveEnemyEntry& Entry : CurrentEnemyMix)
+	{
+		if (!Entry.EnemyClass || Entry.Weight <= 0.f)
+		{
+			continue;
+		}
+		Roll -= Entry.Weight;
+		if (Roll <= 0.f)
+		{
+			return Entry.EnemyClass;
+		}
+	}
+
+	// 부동소수점 오차로 루프를 빠져나온 경우 대비: 마지막 유효 항목 반환
+	for (int32 i = CurrentEnemyMix.Num() - 1; i >= 0; --i)
+	{
+		if (CurrentEnemyMix[i].EnemyClass && CurrentEnemyMix[i].Weight > 0.f)
+		{
+			return CurrentEnemyMix[i].EnemyClass;
+		}
+	}
+	return CurrentEnemyClass;
+}
+
 void AShooterGameMode::HandleEnemyDied(AShooterCharacterBase* DeadCharacter)
 {
 	EnemiesAlive = FMath::Max(0, EnemiesAlive - 1);
+
+	// 흡혈 업그레이드: 플레이어의 KillHeal만큼 회복 (기본 0이라 업그레이드가 없으면 아무 일 없음)
+	// (싱글플레이라 적을 죽이는 건 항상 플레이어 → 누가 죽였는지 따로 확인하지 않는다)
+	if (AShooterCharacterBase* Player = Cast<AShooterCharacterBase>(UGameplayStatics::GetPlayerCharacter(this, 0)))
+	{
+		if (UAbilitySystemComponent* PlayerASC = Player->GetAbilitySystemComponent())
+		{
+			const float KillHeal = PlayerASC->GetNumericAttribute(UShooterAttributeSet::GetKillHealAttribute());
+			Player->Heal(KillHeal);
+		}
+	}
+
 	BroadcastWaveState();
 
 	// 살아있는 적도, 스폰 대기 중인 적도 없으면 웨이브 클리어

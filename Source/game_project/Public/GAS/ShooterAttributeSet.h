@@ -55,4 +55,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Movement")
 	FGameplayAttributeData MoveSpeed;
 	ATTRIBUTE_ACCESSORS_BASIC(UShooterAttributeSet, MoveSpeed)
+
+	// 적을 처치할 때마다 회복하는 체력 (기본 0 = 효과 없음). "흡혈" 업그레이드가 올려준다
+	// (지정자 의미는 위와 동일)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat")
+	FGameplayAttributeData KillHeal;
+	ATTRIBUTE_ACCESSORS_BASIC(UShooterAttributeSet, KillHeal)
 };
