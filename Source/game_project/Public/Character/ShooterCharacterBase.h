@@ -7,7 +7,14 @@
 
 class UAbilitySystemComponent;
 class UShooterAttributeSet;
+class AShooterCharacterBase;
 struct FOnAttributeChangeData;
+
+/**
+ * 캐릭터가 죽었을 때 알려주는 이벤트 타입 (GameMode가 웨이브 남은 적 수를 세는 데 사용).
+ * DYNAMIC_MULTICAST : 여러 구독자 가능 + 블루프린트에서도 바인딩 가능 (C#의 event Action<Character>)
+ */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCharacterDiedSignature, AShooterCharacterBase*, DeadCharacter);
 
 /**
  * 플레이어와 적이 공통으로 상속하는 캐릭터 베이스.
@@ -30,6 +37,12 @@ public:
 	// Category      : "Character" 그룹으로 표시
 	UFUNCTION(BlueprintPure, Category = "Character")
 	bool IsDead() const;
+
+	// 사망 순간에 한 번 호출되는 이벤트. 외부(GameMode 등)가 구독한다
+	// BlueprintAssignable : 블루프린트에서 "Bind Event to On Character Died"로 연결 가능
+	// Category            : "Character" 그룹으로 표시
+	UPROPERTY(BlueprintAssignable, Category = "Character")
+	FOnCharacterDiedSignature OnCharacterDied;
 
 protected:
 	virtual void BeginPlay() override;

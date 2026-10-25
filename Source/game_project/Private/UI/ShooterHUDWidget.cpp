@@ -4,6 +4,36 @@
 #include "GAS/ShooterGameplayTags.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
+#include "Game/ShooterGameMode.h"
+
+void UShooterHUDWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	// GetAuthGameMode<T>(): 현재 월드의 GameMode를 T 타입으로 얻는다 (싱글플레이/서버에서만 존재)
+	if (AShooterGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AShooterGameMode>() : nullptr)
+	{
+		// 웨이브 이벤트 구독. AddUniqueDynamic: 이미 등록돼 있으면 중복 등록하지 않는 버전
+		GameMode->OnWaveStateChanged.AddUniqueDynamic(this, &UShooterHUDWidget::HandleWaveStateChanged);
+
+		// 구독은 앞으로의 변화만 알려주므로 현재 값으로 한 번 표시
+		HandleWaveStateChanged(GameMode->GetCurrentWave(), GameMode->GetEnemiesRemaining());
+	}
+}
+
+void UShooterHUDWidget::HandleWaveStateChanged(int32 WaveNumber, int32 EnemiesRemaining)
+{
+	if (!WaveText)
+	{
+		return;
+	}
+
+	// 웨이브 시작 전(0)이면 준비 문구, 아니면 웨이브 번호와 남은 적 수
+	const FString Text = (WaveNumber <= 0)
+		? TEXT("GET READY")
+		: FString::Printf(TEXT("WAVE %d  |  ENEMIES %d"), WaveNumber, EnemiesRemaining);
+	WaveText->SetText(FText::FromString(Text));
+}
 
 void UShooterHUDWidget::BindToAbilitySystem(UAbilitySystemComponent* InASC)
 {
@@ -43,6 +73,13 @@ void UShooterHUDWidget::NativeDestruct()
 {
 	// 위젯이 사라질 때 구독을 해제하지 않으면, ASC가 이미 없어진 위젯 함수를 부르려다 문제가 생길 수 있다
 	UnbindFromAbilitySystem();
+
+	// GameMode 웨이브 이벤트 구독도 해제 (C#의 event -=)
+	if (AShooterGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AShooterGameMode>() : nullptr)
+	{
+		GameMode->OnWaveStateChanged.RemoveDynamic(this, &UShooterHUDWidget::HandleWaveStateChanged);
+	}
+
 	Super::NativeDestruct();
 }
 

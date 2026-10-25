@@ -33,8 +33,16 @@ public:
 	void BindToAbilitySystem(UAbilitySystemComponent* InASC);
 
 protected:
+	// 위젯이 만들어져 화면에 붙을 때 호출 (Unity의 OnEnable/Start와 비슷) → GameMode 웨이브 이벤트 구독
+	virtual void NativeConstruct() override;
+
 	// 위젯이 화면에서 제거될 때 호출 (Unity의 OnDestroy와 비슷) → 구독 해제
 	virtual void NativeDestruct() override;
+
+	// GameMode가 웨이브 상태 변화를 알려줄 때 호출
+	// UFUNCTION() : 다이내믹 델리게이트(AddDynamic)에 연결하려면 리플렉션에 등록된 함수여야 해서 필요
+	UFUNCTION()
+	void HandleWaveStateChanged(int32 WaveNumber, int32 EnemiesRemaining);
 
 	// ASC가 Health/MaxHealth 변화를 알려줄 때 호출
 	void HandleHealthAttributeChanged(const FOnAttributeChangeData& Data);
@@ -69,6 +77,11 @@ protected:
 	// BindWidgetOptional : 위와 동일 (선택)
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> DeathText;
+
+	// "WAVE 2  |  ENEMIES 5" 같은 웨이브 정보. 없어도 된다
+	// BindWidgetOptional : 위와 동일 (선택)
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> WaveText;
 
 private:
 	// 구독 중인 ASC. Weak 포인터 = 대상이 삭제되면 자동으로 nullptr이 되는 포인터

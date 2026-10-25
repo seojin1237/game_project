@@ -76,4 +76,8 @@ void AShooterCharacterBase::Die()
 
 	// 3) 연출은 BP에 맡김
 	OnDeath();
+
+	// 4) 외부 구독자들에게 "나 죽었다" 알림 (GameMode가 웨이브 진행 판단에 사용)
+	//    Broadcast = 등록된 모든 함수 호출 (C#의 OnCharacterDied?.Invoke(this))
+	OnCharacterDied.Broadcast(this);
 }
