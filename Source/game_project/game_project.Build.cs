@@ -19,7 +19,10 @@ public class game_project : ModuleRules
 			// ===== GAS =====
 			"GameplayAbilities",  // ASC, AttributeSet, GameplayAbility, GameplayEffect
 			"GameplayTags",       // FGameplayTag (State.Dead 같은 계층형 태그)
-			"GameplayTasks"       // 어빌리티 안에서 쓰는 비동기 작업 (몽타주 재생 후 대기 등)
+			"GameplayTasks",      // 어빌리티 안에서 쓰는 비동기 작업 (몽타주 재생 후 대기 등)
+
+			// ===== AI =====
+			"AIModule"            // AAIController, MoveToActor, Behavior Tree 등 AI 기본 기능
 		});
 
         PrivateDependencyModuleNames.AddRange(new string[] { });
