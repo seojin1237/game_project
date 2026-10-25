@@ -127,12 +127,64 @@ void AShooterGameMode::HandleEnemyDied(AShooterCharacterBase* DeadCharacter)
 	EnemiesAlive = FMath::Max(0, EnemiesAlive - 1);
 	BroadcastWaveState();
 
-	// 살아있는 적도, 스폰 대기 중인 적도 없으면 웨이브 클리어 → 쉬었다가 다음 웨이브
-	if (EnemiesAlive == 0 && EnemiesLeftToSpawn == 0)
+	// 살아있는 적도, 스폰 대기 중인 적도 없으면 웨이브 클리어
+	if (EnemiesAlive == 0 && EnemiesLeftToSpawn == 0 && !IsPlayerDead())
 	{
-		UE_LOG(LogTemp, Log, TEXT("[Wave] %d웨이브 클리어! %.0f초 후 다음 웨이브"), CurrentWave, TimeBetweenWaves);
-		GetWorldTimerManager().SetTimer(WaveTimerHandle, this, &AShooterGameMode::StartNextWave, TimeBetweenWaves, false);
+		UE_LOG(LogTemp, Log, TEXT("[Wave] %d웨이브 클리어!"), CurrentWave);
+
+		// 업그레이드 선택 화면을 띄운다. 띄우지 못하면(풀이 비었거나 등) 바로 다음 웨이브 예약
+		// 띄웠다면 플레이어가 카드를 고를 때 NotifyUpgradeChosen()이 호출되어 이어서 진행된다
+		if (!OfferUpgrades())
+		{
+			ScheduleNextWave();
+		}
 	}
+}
+
+bool AShooterGameMode::OfferUpgrades()
+{
+	// 비어 있는 칸(None)은 빼고 후보 목록을 만든다
+	TArray<UShooterUpgradeData*> Candidates;
+	for (UShooterUpgradeData* Upgrade : UpgradePool)
+	{
+		if (Upgrade)
+		{
+			Candidates.Add(Upgrade);
+		}
+	}
+	if (Candidates.IsEmpty())
+	{
+		return false;
+	}
+
+	// 섞기 (Fisher-Yates 셔플): 뒤에서부터 하나씩, 자기 자신 이하 인덱스 중 랜덤 위치와 교환
+	// → 중복 없이 랜덤 N장을 뽑기 위해 섞은 뒤 앞에서 N개를 쓴다
+	for (int32 i = Candidates.Num() - 1; i > 0; --i)
+	{
+		Candidates.Swap(i, FMath::RandRange(0, i));
+	}
+	// SetNum: 배열 길이를 N으로 자른다 (풀이 N보다 적으면 그대로)
+	Candidates.SetNum(FMath::Min(UpgradeChoiceCount, Candidates.Num()));
+
+	// 0번 플레이어의 컨트롤러에게 선택 화면을 띄우라고 요청
+	AShooterPlayerController* PC = Cast<AShooterPlayerController>(UGameplayStatics::GetPlayerController(this, 0));
+	if (!PC)
+	{
+		return false;
+	}
+	PC->ShowUpgradeSelection(Candidates);
+	return true;
+}
+
+void AShooterGameMode::NotifyUpgradeChosen()
+{
+	ScheduleNextWave();
+}
+
+void AShooterGameMode::ScheduleNextWave()
+{
+	UE_LOG(LogTemp, Log, TEXT("[Wave] %.0f초 후 다음 웨이브"), TimeBetweenWaves);
+	GetWorldTimerManager().SetTimer(WaveTimerHandle, this, &AShooterGameMode::StartNextWave, TimeBetweenWaves, false);
 }
 
 void AShooterGameMode::BroadcastWaveState()

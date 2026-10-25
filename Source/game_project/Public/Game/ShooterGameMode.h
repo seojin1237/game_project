@@ -54,6 +54,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Upgrade")
 	const TArray<UShooterUpgradeData*>& GetUpgradePool() const { return ObjectPtrDecay(UpgradePool); }
 
+	// 플레이어가 업그레이드 카드를 고른 뒤 PlayerController가 호출 → 쉬는 시간 후 다음 웨이브
+	void NotifyUpgradeChosen();
+
 	// [테스트용] 콘솔(~)에 "DebugApplyUpgrade 0" 처럼 입력 → UpgradePool[0]을 플레이어에게 적용
 	// Exec : 콘솔 명령어로 호출 가능 (GameMode는 Exec가 동작하는 클래스 중 하나)
 	UFUNCTION(Exec)
@@ -76,6 +79,12 @@ protected:
 
 	// 현재 상태를 OnWaveStateChanged로 알림
 	void BroadcastWaveState();
+
+	// 웨이브 클리어 후: 업그레이드 카드를 뽑아 선택 화면을 띄운다. 띄웠으면 true (못 띄우면 바로 다음 웨이브)
+	bool OfferUpgrades();
+
+	// TimeBetweenWaves초 뒤 다음 웨이브 시작 예약
+	void ScheduleNextWave();
 
 	// 플레이어가 죽었는지 (죽었으면 웨이브 진행 중단)
 	bool IsPlayerDead() const;
@@ -106,6 +115,13 @@ protected:
 	// Category         : "Upgrade" 그룹으로 표시
 	UPROPERTY(EditDefaultsOnly, Category = "Upgrade")
 	TArray<TObjectPtr<UShooterUpgradeData>> UpgradePool;
+
+	// 웨이브 클리어 때 보여줄 카드 수 (풀이 더 적으면 풀 개수만큼)
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능
+	// Category         : "Upgrade" 그룹으로 표시
+	// meta=(ClampMin)  : 1 미만 입력 방지
+	UPROPERTY(EditDefaultsOnly, Category = "Upgrade", meta = (ClampMin = "1"))
+	int32 UpgradeChoiceCount = 3;
 
 private:
 	// ===== 진행 상태 =====
