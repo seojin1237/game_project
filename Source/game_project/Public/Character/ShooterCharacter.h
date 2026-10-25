@@ -1,12 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
-#include "AbilitySystemInterface.h"
+#include "Character/ShooterCharacterBase.h"
 #include "ShooterCharacter.generated.h"
 
-class UAbilitySystemComponent;
-class UShooterAttributeSet;
 class UGameplayEffect;
 class UGameplayAbility;
 class USpringArmComponent;
@@ -17,19 +14,16 @@ struct FInputActionValue;
 
 /**
  * 플레이어 캐릭터.
- * GAS를 쓰기 위해 AbilitySystemComponent(ASC)를 가지고,
- * IAbilitySystemInterface로 "나는 ASC를 가지고 있다"고 외부에 알려준다.
+ * ASC/AttributeSet/사망 처리는 부모(AShooterCharacterBase)가 담당하고,
+ * 여기서는 카메라, 입력, 사격 어빌리티 등 플레이어 전용 기능만 다룬다.
  */
 UCLASS()
-class GAME_PROJECT_API AShooterCharacter : public ACharacter, public IAbilitySystemInterface
+class GAME_PROJECT_API AShooterCharacter : public AShooterCharacterBase
 {
 	GENERATED_BODY()
 
 public:
 	AShooterCharacter();
-
-	// IAbilitySystemInterface 구현: GAS 시스템이 이 함수로 캐릭터의 ASC를 찾아간다
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 	// [테스트용] 콘솔(~ 키)에 DebugDamage 입력 시 DebugDamageEffect를 자기 자신에게 적용
 	// Exec : 콘솔 명령어로 호출 가능 (PlayerController, 빙의된 Pawn, GameMode 등에서만 동작)
@@ -37,7 +31,7 @@ public:
 	void DebugDamage();
 
 protected:
-	// 컨트롤러가 이 캐릭터에 빙의(Possess)했을 때 호출된다
+	// 부모의 ASC 초기화 + 어빌리티 등록
 	virtual void PossessedBy(AController* NewController) override;
 
 	// 컨트롤러가 바뀌었을 때 호출 → 여기서 Input Mapping Context를 등록한다
@@ -88,17 +82,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> FireAction;
 
-	// ===== GAS =====
-
-	// VisibleAnywhere   : 에디터 디테일 패널에서 보이기만 함 (컴포넌트 자체를 다른 걸로 교체 불가)
-	// BlueprintReadOnly : 블루프린트에서 읽기(Get)만 가능, 대입(Set) 불가
-	// Category          : 디테일 패널/블루프린트에서 "GAS" 그룹으로 묶어서 표시
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
-	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
-
-	// 체력 등 스탯 묶음 (지정자 의미는 위와 동일)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
-	TObjectPtr<UShooterAttributeSet> AttributeSet;
+	// ===== GAS (ASC/AttributeSet은 부모에 있음) =====
 
 	// 사격 어빌리티 클래스 (BP에서 GA_Fire 지정). 게임 시작 시 ASC에 등록(Grant)된다
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능

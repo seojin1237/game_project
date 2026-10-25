@@ -1,6 +1,5 @@
 #include "Character/ShooterCharacter.h"
 #include "AbilitySystemComponent.h"
-#include "GAS/ShooterAttributeSet.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Camera/CameraComponent.h"
@@ -11,9 +10,6 @@
 
 AShooterCharacter::AShooterCharacter()
 {
-	// 아직 매 프레임 할 일이 없으므로 Tick 끔 (성능)
-	PrimaryActorTick.bCanEverTick = false;
-
 	// ===== 회전 방식: 슈터 스타일 =====
 	// 캐릭터 몸이 항상 카메라(컨트롤러)가 보는 방향으로 돈다 → 조준 방향 = 캐릭터 정면
 	bUseControllerRotationYaw = true;
@@ -33,37 +29,20 @@ AShooterCharacter::AShooterCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // 봉 끝에 부착
 	FollowCamera->bUsePawnControlRotation = false;            // 회전은 봉이 담당
 
-	// ===== GAS =====
-	// 생성자에서 컴포넌트 생성 → 이 캐릭터의 기본 구성품이 된다
-	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
-
-	// AttributeSet도 ASC의 Owner(=이 캐릭터)의 서브오브젝트로 만들면
-	// ASC가 초기화될 때 자동으로 찾아서 등록한다
-	AttributeSet = CreateDefaultSubobject<UShooterAttributeSet>(TEXT("AttributeSet"));
-}
-
-UAbilitySystemComponent* AShooterCharacter::GetAbilitySystemComponent() const
-{
-	return AbilitySystemComponent;
+	// ASC/AttributeSet 생성은 부모(AShooterCharacterBase) 생성자에서 이미 처리됨
 }
 
 void AShooterCharacter::PossessedBy(AController* NewController)
 {
+	// 부모: ASC 초기화(InitAbilityActorInfo)
 	Super::PossessedBy(NewController);
 
-	if (AbilitySystemComponent)
+	// 어빌리티 등록(Grant): "이 캐릭터는 이 어빌리티를 사용할 수 있다"고 ASC에 알려준다.
+	// 등록만 하는 것이고, 실행(Activate)은 입력이 들어왔을 때 따로 한다
+	if (AbilitySystemComponent && FireAbility)
 	{
-		// ASC에게 "누가 소유자(Owner)이고, 누가 실제로 움직이는 몸(Avatar)인지" 알려준다.
-		// 이 캐릭터는 ASC를 직접 들고 있으므로 둘 다 this.
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
-
-		// 어빌리티 등록(Grant): "이 캐릭터는 이 어빌리티를 사용할 수 있다"고 ASC에 알려준다.
-		// 등록만 하는 것이고, 실행(Activate)은 입력이 들어왔을 때 따로 한다
-		if (FireAbility)
-		{
-			// Spec = 어빌리티 클래스 + 레벨(1)을 묶은 "등록 정보"
-			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(FireAbility, 1));
-		}
+		// Spec = 어빌리티 클래스 + 레벨(1)을 묶은 "등록 정보"
+		AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(FireAbility, 1));
 	}
 }
 
@@ -140,6 +119,12 @@ void AShooterCharacter::Look(const FInputActionValue& Value)
 
 void AShooterCharacter::Fire()
 {
+	// 죽은 뒤에는 쏘지 않음
+	if (IsDead())
+	{
+		return;
+	}
+
 	if (AbilitySystemComponent && FireAbility)
 	{
 		// 등록된 어빌리티 중 이 클래스를 찾아 실행 시도.
