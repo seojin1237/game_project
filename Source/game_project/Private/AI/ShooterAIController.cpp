@@ -1,5 +1,6 @@
 #include "AI/ShooterAIController.h"
 #include "Character/ShooterCharacterBase.h"
+#include "Character/ShooterEnemy.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 
@@ -55,8 +56,21 @@ void AShooterAIController::UpdateChase()
 		return;
 	}
 
-	// 4) 플레이어에게 이동. NavMesh 위에서 장애물을 피해 길을 찾아간다
+	// 4) 공격 거리 안이면 공격 시도 (적 캐릭터일 때만)
+	//    Dist: 몸 중심 사이 거리. FVector::Dist = 두 점 사이 거리 (Unity의 Vector3.Distance)
+	if (AShooterEnemy* Enemy = Cast<AShooterEnemy>(GetPawn()))
+	{
+		const float Dist = FVector::Dist(Enemy->GetActorLocation(), Player->GetActorLocation());
+		if (Dist <= Enemy->GetAttackStartDistance())
+		{
+			// 쿨타임 중이면 GAS가 거부하므로 여기선 신경 쓸 필요 없다 (플레이어 연사와 같은 구조)
+			Enemy->TryAttack(Player);
+		}
+	}
+
+	// 5) 플레이어에게 이동. NavMesh 위에서 장애물을 피해 길을 찾아간다
 	//    (Unity의 NavMeshAgent.SetDestination(player.position)과 같은 역할)
 	//    매번 다시 호출하는 이유: 플레이어가 계속 움직이므로 목표 위치를 갱신해야 해서
+	//    공격 중에도 호출해서, 플레이어가 물러나면 바로 다시 따라가게 한다
 	MoveToActor(Player, AcceptanceRadius);
 }

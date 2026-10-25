@@ -4,9 +4,12 @@
 #include "Character/ShooterCharacterBase.h"
 #include "ShooterEnemy.generated.h"
 
+class UGameplayAbility;
+
 /**
- * 적 캐릭터. AI 컨트롤러가 조종한다.
- * 이동/공격 AI는 다음 단계에서 추가.
+ * 적 캐릭터. AI 컨트롤러(AShooterAIController)가 조종한다.
+ * - 이동: AI 컨트롤러가 플레이어를 추적
+ * - 공격: AI 컨트롤러가 거리를 보고 TryAttack()을 호출 → AttackAbility 실행
  */
 UCLASS()
 class GAME_PROJECT_API AShooterEnemy : public AShooterCharacterBase
@@ -16,14 +19,34 @@ class GAME_PROJECT_API AShooterEnemy : public AShooterCharacterBase
 public:
 	AShooterEnemy();
 
+	// Target을 바라보고 공격 시도. 쿨타임 중이거나 죽었으면 GAS가/코드가 알아서 거부한다
+	// 반환값: 실제로 공격 어빌리티가 실행됐으면 true
+	bool TryAttack(const AActor* Target);
+
+	// AI가 "이 거리 안이면 공격 시도"하는 기준 거리 (몸 중심 사이 거리, cm)
+	float GetAttackStartDistance() const { return AttackStartDistance; }
+
 protected:
+	// 부모의 ASC 초기화 + 공격 어빌리티 등록
+	virtual void PossessedBy(AController* NewController) override;
+
 	// 부모의 사망 처리 + 일정 시간 뒤 삭제
 	virtual void Die() override;
 
-	// 사망 후 액터가 사라지기까지 걸리는 시간(초). 0이면 사라지지 않음
+	// 공격 어빌리티 클래스 (BP에서 GA_EnemyAttack 지정). 빙의 시 ASC에 등록(Grant)된다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "Enemy|Combat" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Enemy|Combat")
+	TSubclassOf<UGameplayAbility> AttackAbility;
+
+	// 플레이어와의 거리가 이 값 이하면 공격 시도 (cm). 공격 어빌리티의 AttackRange와 비슷하게 맞출 것
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능
-	// Category         : "Enemy" 그룹으로 표시
+	// Category         : "Enemy|Combat" 하위 그룹으로 표시
 	// meta=(ClampMin)  : 0 미만 입력 방지
+	UPROPERTY(EditDefaultsOnly, Category = "Enemy|Combat", meta = (ClampMin = "0"))
+	float AttackStartDistance = 200.f;
+
+	// 사망 후 액터가 사라지기까지 걸리는 시간(초). 0이면 사라지지 않음 (지정자 의미는 위와 동일)
 	UPROPERTY(EditDefaultsOnly, Category = "Enemy", meta = (ClampMin = "0"))
 	float DeathLifeSpan = 3.f;
 };

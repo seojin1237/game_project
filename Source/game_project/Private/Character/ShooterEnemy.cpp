@@ -1,5 +1,6 @@
 #include "Character/ShooterEnemy.h"
 #include "AI/ShooterAIController.h"
+#include "AbilitySystemComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 AShooterEnemy::AShooterEnemy()
@@ -17,6 +18,43 @@ AShooterEnemy::AShooterEnemy()
 
 	// 플레이어(기본 600)보다 느리게 → 도망치면서 쏠 수 있게. 실제 튜닝은 BP_Enemy에서
 	GetCharacterMovement()->MaxWalkSpeed = 350.f;
+}
+
+void AShooterEnemy::PossessedBy(AController* NewController)
+{
+	// 부모: ASC 초기화(InitAbilityActorInfo)
+	Super::PossessedBy(NewController);
+
+	// 공격 어빌리티 등록(Grant). 플레이어가 GA_Fire를 등록하는 것과 같은 방식
+	// FindAbilitySpecFromClass로 이미 등록돼 있는지 확인 → 재빙의 시 중복 등록 방지
+	if (AbilitySystemComponent && AttackAbility && !AbilitySystemComponent->FindAbilitySpecFromClass(AttackAbility))
+	{
+		AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackAbility, 1));
+	}
+}
+
+bool AShooterEnemy::TryAttack(const AActor* Target)
+{
+	if (IsDead() || !AbilitySystemComponent || !AttackAbility)
+	{
+		return false;
+	}
+
+	// 공격 전에 대상 쪽으로 몸을 돌린다.
+	// 이동 방향으로 회전하는 설정이라, 멈춰 있을 때는 플레이어를 정확히 안 보고 있을 수 있기 때문
+	// (근접 판정이 "내 앞쪽"으로 나가므로 방향이 중요)
+	if (Target)
+	{
+		FVector ToTarget = Target->GetActorLocation() - GetActorLocation();
+		ToTarget.Z = 0.f; // 위아래 기울기는 무시하고 수평으로만 회전
+		if (!ToTarget.IsNearlyZero())
+		{
+			SetActorRotation(ToTarget.Rotation());
+		}
+	}
+
+	// 등록된 공격 어빌리티 실행 시도. 쿨타임 중이면 GAS가 false를 돌려준다
+	return AbilitySystemComponent->TryActivateAbilityByClass(AttackAbility);
 }
 
 void AShooterEnemy::Die()
