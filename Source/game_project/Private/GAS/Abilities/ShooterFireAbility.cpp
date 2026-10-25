@@ -4,6 +4,7 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/Controller.h"
 #include "DrawDebugHelpers.h"
+#include "Game/ShooterCollision.h"
 
 UShooterFireAbility::UShooterFireAbility()
 {
@@ -43,9 +44,10 @@ void UShooterFireAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 	const FVector End = Start + AimRotation.Vector() * Range;
 
 	// 3) 라인 트레이스 (Unity의 Physics.Raycast). 쏜 사람 자신은 무시
+	//    채널은 무기 전용 ECC_Weapon 사용. ECC_Visibility는 캐릭터 캡슐(Pawn 프리셋)이 무시해서 적이 안 맞았다
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(ShooterFire), false, Avatar);
 	FHitResult Hit;
-	const bool bHit = World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
+	const bool bHit = World->LineTraceSingleByChannel(Hit, Start, End, ECC_Weapon, Params);
 
 	if (bDrawDebug)
 	{
