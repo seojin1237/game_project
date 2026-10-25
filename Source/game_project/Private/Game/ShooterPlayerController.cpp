@@ -9,6 +9,17 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "TimerManager.h"
 
+void AShooterPlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// 실제 사람이 조작하는 컨트롤러만 (화면/입력이 있는 쪽)
+	if (IsLocalController())
+	{
+		EnterGameMode();
+	}
+}
+
 void AShooterPlayerController::OnPossess(APawn* InPawn)
 {
 	// 부모 처리 안에서 캐릭터의 PossessedBy가 호출됨 → 캐릭터 ASC 초기화(InitAbilityActorInfo)가 끝난 뒤에 아래가 실행된다
@@ -159,6 +170,12 @@ void AShooterPlayerController::RestartRun()
 	// 레벨을 새로 열면 모든 액터/위젯/타이머가 새로 만들어지므로 따로 초기화할 게 없다
 	// bRemovePrefixString=true: 에디터 플레이 중 붙는 "UEDPIE_0_" 같은 접두사를 제거한 순수 이름
 	const FString LevelName = UGameplayStatics::GetCurrentLevelName(this, true);
+
+	// 레벨을 열기 전에 입력을 게임 모드로 되돌린다.
+	// 입력 모드/마우스 캡처 설정은 PlayerController가 아니라 게임 창(뷰포트)에 저장되어 있어서,
+	// 그대로 두면 새 판에서도 UI 전용 모드가 유지되어 조작이 안 된다
+	EnterGameMode();
+
 	UGameplayStatics::OpenLevel(this, FName(*LevelName));
 }
 

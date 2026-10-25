@@ -40,6 +40,10 @@ public:
 	void QuitRun();
 
 protected:
+	// 컨트롤러가 게임에 등장할 때 호출 → 입력 모드를 항상 "게임"으로 초기화
+	// (레벨을 다시 열어도 입력 모드는 게임 창(뷰포트)에 남아 있어서, 이전 판의 UI 모드가 이어지는 것을 막는다)
+	virtual void BeginPlay() override;
+
 	// 캐릭터에 빙의할 때 호출 → HUD를 만들고(처음 한 번) 그 캐릭터의 ASC에 연결
 	virtual void OnPossess(APawn* InPawn) override;
 
