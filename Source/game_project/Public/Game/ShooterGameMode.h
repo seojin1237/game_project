@@ -7,6 +7,7 @@
 class UDataTable;
 class AShooterEnemy;
 class AShooterCharacterBase;
+class UShooterUpgradeData;
 
 /**
  * 웨이브 상태가 바뀔 때(웨이브 시작, 적 스폰, 적 사망) 알려주는 이벤트 타입.
@@ -46,6 +47,17 @@ public:
 	// 이번 웨이브에 남은 적 수 = 살아있는 적 + 아직 스폰 안 된 적 (지정자 의미는 위와 동일)
 	UFUNCTION(BlueprintPure, Category = "Wave")
 	int32 GetEnemiesRemaining() const { return EnemiesAlive + EnemiesLeftToSpawn; }
+
+	// 업그레이드 후보 목록 (G-3에서 여기서 카드 3장을 뽑는다)
+	// BlueprintPure : 값 읽기 전용 BP 노드 / Category : "Upgrade" 그룹으로 표시
+	// ObjectPtrDecay: TArray<TObjectPtr<T>> 를 일반 포인터 배열 TArray<T*> 로 복사 없이 바꿔 보여준다
+	UFUNCTION(BlueprintPure, Category = "Upgrade")
+	const TArray<UShooterUpgradeData*>& GetUpgradePool() const { return ObjectPtrDecay(UpgradePool); }
+
+	// [테스트용] 콘솔(~)에 "DebugApplyUpgrade 0" 처럼 입력 → UpgradePool[0]을 플레이어에게 적용
+	// Exec : 콘솔 명령어로 호출 가능 (GameMode는 Exec가 동작하는 클래스 중 하나)
+	UFUNCTION(Exec)
+	void DebugApplyUpgrade(int32 Index);
 
 protected:
 	// 게임 시작 시 호출 (Unity의 Start) → 스폰 지점 수집, 첫 웨이브 예약
@@ -88,6 +100,12 @@ protected:
 	// 표의 마지막 줄을 넘어간 웨이브부터, 한 웨이브마다 추가로 늘어나는 적 수 (지정자 의미는 위와 동일)
 	UPROPERTY(EditDefaultsOnly, Category = "Wave", meta = (ClampMin = "0"))
 	int32 ExtraEnemiesPerWaveAfterTable = 2;
+
+	// 등장 가능한 업그레이드 카드 목록 (BP에서 DA_Upgrade_XXX 에셋들을 추가)
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능
+	// Category         : "Upgrade" 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Upgrade")
+	TArray<TObjectPtr<UShooterUpgradeData>> UpgradePool;
 
 private:
 	// ===== 진행 상태 =====

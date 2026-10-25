@@ -4,6 +4,7 @@
 #include "Character/ShooterCharacter.h"
 #include "Character/ShooterEnemy.h"
 #include "Engine/DataTable.h"
+#include "GAS/ShooterUpgradeData.h"
 #include "Engine/TargetPoint.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
@@ -138,6 +139,21 @@ void AShooterGameMode::BroadcastWaveState()
 {
 	// 구독한 모든 대상(HUD 등)에게 알림 (C#의 OnWaveStateChanged?.Invoke(wave, remaining))
 	OnWaveStateChanged.Broadcast(CurrentWave, GetEnemiesRemaining());
+}
+
+void AShooterGameMode::DebugApplyUpgrade(int32 Index)
+{
+	// IsValidIndex: 배열 범위 안인지 확인 (C#에서 index < list.Count 체크와 같음)
+	if (!UpgradePool.IsValidIndex(Index))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Upgrade] 잘못된 번호 %d (UpgradePool 개수: %d)"), Index, UpgradePool.Num());
+		return;
+	}
+
+	if (AShooterCharacterBase* Player = Cast<AShooterCharacterBase>(UGameplayStatics::GetPlayerCharacter(this, 0)))
+	{
+		Player->ApplyUpgrade(UpgradePool[Index]);
+	}
 }
 
 bool AShooterGameMode::IsPlayerDead() const

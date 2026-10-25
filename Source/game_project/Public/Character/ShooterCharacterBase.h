@@ -8,6 +8,7 @@
 class UAbilitySystemComponent;
 class UShooterAttributeSet;
 class UGameplayEffect;
+class UShooterUpgradeData;
 class AShooterCharacterBase;
 struct FOnAttributeChangeData;
 
@@ -44,6 +45,13 @@ public:
 	// Category            : "Character" 그룹으로 표시
 	UPROPERTY(BlueprintAssignable, Category = "Character")
 	FOnCharacterDiedSignature OnCharacterDied;
+
+	// 업그레이드 적용: 업그레이드 데이터의 GE를 자기 자신에게 적용 (Infinite GE면 영구 버프)
+	// 반환값: 실제로 적용됐으면 true
+	// BlueprintCallable : 블루프린트에서 실행 핀이 있는 노드로 호출 가능 (카드 UI에서 사용 예정)
+	// Category          : "Upgrade" 그룹으로 표시
+	UFUNCTION(BlueprintCallable, Category = "Upgrade")
+	bool ApplyUpgrade(const UShooterUpgradeData* Upgrade);
 
 protected:
 	virtual void BeginPlay() override;

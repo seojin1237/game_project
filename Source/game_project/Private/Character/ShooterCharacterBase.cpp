@@ -2,6 +2,7 @@
 #include "AbilitySystemComponent.h"
 #include "GAS/ShooterAttributeSet.h"
 #include "GAS/ShooterGameplayTags.h"
+#include "GAS/ShooterUpgradeData.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -85,6 +86,30 @@ void AShooterCharacterBase::InitializeAttributes()
 	{
 		GetCharacterMovement()->MaxWalkSpeed = AttributeSet->GetMoveSpeed();
 	}
+}
+
+bool AShooterCharacterBase::ApplyUpgrade(const UShooterUpgradeData* Upgrade)
+{
+	// 죽었거나, 데이터가 비었거나, GE가 지정 안 된 업그레이드는 무시
+	if (IsDead() || !AbilitySystemComponent || !Upgrade || !Upgrade->Effect)
+	{
+		return false;
+	}
+
+	// 초기 스탯과 같은 방식으로 자기 자신에게 GE 적용.
+	// 업그레이드 GE는 Infinite라서 적용된 뒤 계속 남아 있고, 같은 업그레이드를 또 고르면 또 하나가 쌓인다
+	FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+	Context.AddSourceObject(this);
+	const FGameplayEffectSpecHandle Spec = AbilitySystemComponent->MakeOutgoingSpec(Upgrade->Effect, 1.f, Context);
+	if (!Spec.IsValid())
+	{
+		return false;
+	}
+	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+
+	// ToString(): FText → FString 변환 (로그 출력용)
+	UE_LOG(LogTemp, Log, TEXT("[Upgrade] %s 적용: %s"), *GetName(), *Upgrade->DisplayName.ToString());
+	return true;
 }
 
 void AShooterCharacterBase::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
