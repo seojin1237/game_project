@@ -32,12 +32,12 @@ void AShooterDamageNumberActor::BeginPlay()
 	AddActorWorldOffset(Offset);
 }
 
-void AShooterDamageNumberActor::SetDamage(float Damage)
+void AShooterDamageNumberActor::SetDamage(float Damage, bool bCritical)
 {
 	// GetUserWidgetObject(): WidgetComponent가 실제로 만든 위젯 인스턴스
 	if (UShooterDamageNumberWidget* Widget = Cast<UShooterDamageNumberWidget>(NumberWidget->GetUserWidgetObject()))
 	{
-		Widget->SetDamage(Damage);
+		Widget->SetDamage(Damage, bCritical);
 	}
 }
 

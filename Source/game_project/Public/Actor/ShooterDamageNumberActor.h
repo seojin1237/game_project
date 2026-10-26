@@ -20,8 +20,8 @@ class GAME_PROJECT_API AShooterDamageNumberActor : public AActor
 public:
 	AShooterDamageNumberActor();
 
-	// 표시할 데미지 설정. 스폰 직후 GameplayCue가 호출
-	void SetDamage(float Damage);
+	// 표시할 데미지 설정. 스폰 직후 GameplayCue가 호출. bCritical이면 치명타 모양으로 표시
+	void SetDamage(float Damage, bool bCritical);
 
 	// 매 프레임 호출 (Unity의 Update) → 위로 이동 + 점점 투명하게
 	virtual void Tick(float DeltaSeconds) override;

@@ -1,5 +1,6 @@
 #include "GAS/Executions/ShooterDamageExecution.h"
 #include "GAS/ShooterAttributeSet.h"
+#include "GAS/ShooterGameplayEffectContext.h"
 
 namespace
 {
@@ -71,6 +72,13 @@ void UShooterDamageExecution::Execute_Implementation(const FGameplayEffectCustom
 	{
 		Damage *= FMath::Max(CritMultiplier, 1.f);
 		UE_LOG(LogTemp, Log, TEXT("[GAS] Critical hit! x%.1f -> %.1f"), CritMultiplier, Damage);
+	}
+
+	// 치명타 여부를 Effect Context에 기록 → 같은 Context를 받는 GameplayCue(데미지 숫자)가 읽을 수 있다
+	// Spec은 const지만 Context는 공유 포인터(Handle)라 복사해서 꺼내면 내용을 바꿀 수 있다
+	if (FShooterGameplayEffectContext* Context = FShooterGameplayEffectContext::ExtractEffectContext(Spec.GetContext()))
+	{
+		Context->SetIsCriticalHit(bCritical);
 	}
 
 	if (Damage <= 0.f)

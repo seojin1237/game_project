@@ -1,6 +1,7 @@
 #include "GAS/Cues/ShooterGCN_DamageNumber.h"
 #include "Actor/ShooterDamageNumberActor.h"
 #include "GameFramework/Pawn.h"
+#include "GAS/ShooterGameplayEffectContext.h"
 
 bool UShooterGCN_DamageNumber::OnExecute_Implementation(AActor* MyTarget, const FGameplayCueParameters& Parameters) const
 {
@@ -48,7 +49,11 @@ bool UShooterGCN_DamageNumber::OnExecute_Implementation(AActor* MyTarget, const 
 	if (AShooterDamageNumberActor* Number = World->SpawnActor<AShooterDamageNumberActor>(
 		DamageNumberClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams))
 	{
-		Number->SetDamage(Damage);
+		// 데미지 계산(Execution)이 Context에 남긴 치명타 여부를 꺼낸다 (우리 Context가 아니면 평타로 취급)
+		const FShooterGameplayEffectContext* Context = FShooterGameplayEffectContext::ExtractEffectContext(Parameters.EffectContext);
+		const bool bCritical = Context && Context->IsCriticalHit();
+
+		Number->SetDamage(Damage, bCritical);
 	}
 
 	return true;
