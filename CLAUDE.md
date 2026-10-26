@@ -70,3 +70,7 @@
 # 버전 관리
 - Git 사용 (`.gitignore`, `.gitattributes` 있음)
 - `.uasset` / `.umap` 등 바이너리는 Git LFS로 관리
+- 원격 저장소: `origin` = `https://github.com/seojin1237/game_project.git` (`main` 브랜치)
+- **기능 하나를 마칠 때마다 커밋하고 바로 `git push origin main`까지 할 것** (백업 목적, 사용자 승인됨)
+  - 중간 단계 커밋은 로컬에만 두고, 기능이 동작 확인되면 푸시
+  - 푸시가 인증 문제로 실패하면 터미널 패널에서 `git push origin main`을 실행해 사용자가 브라우저 인증을 하도록 안내
