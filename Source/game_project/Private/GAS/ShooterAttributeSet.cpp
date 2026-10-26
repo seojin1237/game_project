@@ -11,6 +11,8 @@ UShooterAttributeSet::UShooterAttributeSet()
 	InitFireInterval(0.2f);
 	InitMoveSpeed(600.f);
 	InitKillHeal(0.f);
+	InitCritChance(0.f);
+	InitCritMultiplier(2.f);
 }
 
 void UShooterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -42,6 +44,14 @@ void UShooterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribut
 	else if (Attribute == GetKillHealAttribute())
 	{
 		NewValue = FMath::Max(NewValue, 0.f);       // 음수(처치할 때마다 피해) 방지
+	}
+	else if (Attribute == GetCritChanceAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.f, 1.f); // 확률이므로 0% ~ 100%
+	}
+	else if (Attribute == GetCritMultiplierAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 1.f);       // 치명타가 평타보다 약해지지 않게
 	}
 }
 

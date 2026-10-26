@@ -61,4 +61,15 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat")
 	FGameplayAttributeData KillHeal;
 	ATTRIBUTE_ACCESSORS_BASIC(UShooterAttributeSet, KillHeal)
+
+	// 치명타 확률 (0 ~ 1. 0.1 = 10%). 데미지 계산(UShooterDamageExecution)이 공격자(Source)의 값을 읽는다
+	// 기본 0 → 적은 치명타 없음. 플레이어는 GE_InitStats_Player에서 지정 (지정자 의미는 위와 동일)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat")
+	FGameplayAttributeData CritChance;
+	ATTRIBUTE_ACCESSORS_BASIC(UShooterAttributeSet, CritChance)
+
+	// 치명타 배율 (2.0 = 치명타 시 데미지 2배) (지정자 의미는 위와 동일)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat")
+	FGameplayAttributeData CritMultiplier;
+	ATTRIBUTE_ACCESSORS_BASIC(UShooterAttributeSet, CritMultiplier)
 };
