@@ -2,6 +2,8 @@
 #include "AI/ShooterAIController.h"
 #include "AbilitySystemComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/WidgetComponent.h"
+#include "UI/ShooterHealthBarWidget.h"
 
 AShooterEnemy::AShooterEnemy()
 {
@@ -18,6 +20,31 @@ AShooterEnemy::AShooterEnemy()
 
 	// 플레이어(기본 600)보다 느리게 → 도망치면서 쏠 수 있게. 실제 튜닝은 BP_Enemy에서
 	GetCharacterMovement()->MaxWalkSpeed = 350.f;
+
+	// ===== 머리 위 체력 바 =====
+	HealthBarWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarWidget"));
+	HealthBarWidget->SetupAttachment(RootComponent);
+	// 캡슐 중심에서 위로 (캡슐 반높이 88 + 여유). 실제 위치 조정은 BP에서
+	HealthBarWidget->SetRelativeLocation(FVector(0.f, 0.f, 120.f));
+	// Screen: 항상 화면을 정면으로 보고, 멀어져도 같은 크기로 그린다 (3D 판자처럼 기울지 않음)
+	HealthBarWidget->SetWidgetSpace(EWidgetSpace::Screen);
+	// 화면에 그릴 크기 (픽셀). 실제 크기 조정은 BP에서
+	HealthBarWidget->SetDrawSize(FVector2D(80.f, 8.f));
+	// 체력 바는 충돌이 필요 없다 (총알이 체력 바에 막히면 안 되니까)
+	HealthBarWidget->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void AShooterEnemy::BeginPlay()
+{
+	// Super::BeginPlay() 안에서 컴포넌트들의 BeginPlay도 실행되며, 이때 WidgetComponent가 위젯 인스턴스를 만든다
+	Super::BeginPlay();
+
+	// 만들어진 체력 바 위젯을 이 적의 ASC에 연결 → 체력이 바뀌면 바가 자동 갱신
+	// (초기 스탯 GE는 빙의(PossessedBy) 때 이미 적용됐으므로, 연결 즉시 올바른 값이 표시된다)
+	if (UShooterHealthBarWidget* Bar = Cast<UShooterHealthBarWidget>(HealthBarWidget->GetUserWidgetObject()))
+	{
+		Bar->BindToAbilitySystem(AbilitySystemComponent);
+	}
 }
 
 void AShooterEnemy::PossessedBy(AController* NewController)
@@ -61,6 +88,12 @@ void AShooterEnemy::Die()
 {
 	// 부모 클래스의 공통 사망 처리 (태그, 충돌/이동 끄기, OnDeath 연출) 먼저 실행
 	Super::Die();
+
+	// 죽은 적의 체력 바는 바로 숨김 (시체가 사라질 때까지 빈 바가 떠 있지 않게)
+	if (HealthBarWidget)
+	{
+		HealthBarWidget->SetVisibility(false);
+	}
 
 	// 적만의 추가 처리: DeathLifeSpan초 뒤 자동 삭제 (Unity의 Destroy(gameObject, delay))
 	if (DeathLifeSpan > 0.f)

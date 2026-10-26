@@ -5,6 +5,7 @@
 #include "ShooterEnemy.generated.h"
 
 class UGameplayAbility;
+class UWidgetComponent;
 
 /**
  * 적 캐릭터. AI 컨트롤러(AShooterAIController)가 조종한다.
@@ -27,8 +28,19 @@ public:
 	float GetAttackStartDistance() const { return AttackStartDistance; }
 
 protected:
+	// 게임 시작 시 호출 → 머리 위 체력 바 위젯을 이 적의 ASC에 연결
+	virtual void BeginPlay() override;
+
 	// 부모의 ASC 초기화 + 공격 어빌리티 등록
 	virtual void PossessedBy(AController* NewController) override;
+
+	// 머리 위 체력 바 (BP에서 Widget Class에 WBP_EnemyHealthBar 지정)
+	// UWidgetComponent = 위젯을 3D 월드의 특정 위치에 붙여 그리는 컴포넌트 (Unity의 World Space Canvas와 비슷)
+	// VisibleAnywhere   : 디테일 패널에서 보이고 내부 값(위젯 클래스, 위치, 크기)은 수정 가능
+	// BlueprintReadOnly : 블루프린트에서 읽기만 가능
+	// Category          : "Enemy|UI" 하위 그룹으로 표시
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|UI")
+	TObjectPtr<UWidgetComponent> HealthBarWidget;
 
 	// 부모의 사망 처리 + 일정 시간 뒤 삭제
 	virtual void Die() override;
