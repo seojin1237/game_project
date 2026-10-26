@@ -5,6 +5,8 @@
 #include "GameFramework/Controller.h"
 #include "DrawDebugHelpers.h"
 #include "Game/ShooterCollision.h"
+#include "Character/ShooterCharacter.h"
+#include "Weapon/ShooterWeapon.h"
 
 UShooterFireAbility::UShooterFireAbility()
 {
@@ -30,22 +32,49 @@ void UShooterFireAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 		return;
 	}
 
-	// 2) 시작점/방향: 플레이어가 보는 시점(카메라) 기준 → 크로스헤어가 있는 화면 중앙으로 쏜다
-	FVector Start = Avatar->GetActorLocation();
-	FRotator AimRotation = Avatar->GetActorRotation();
+	// 2) 들고 있는 무기의 데이터 사용. 무기가 없으면 이 어빌리티(GA_Fire)에 지정한 값으로 대체
+	const AShooterCharacter* ShooterCharacter = Cast<AShooterCharacter>(Avatar);
+	const AShooterWeapon* Weapon = ShooterCharacter ? ShooterCharacter->GetCurrentWeapon() : nullptr;
+	const TSubclassOf<UGameplayEffect> UsedDamageEffect = (Weapon && Weapon->GetDamageEffect()) ? Weapon->GetDamageEffect() : DamageEffect;
+	const float UsedRange = Weapon ? Weapon->GetRange() : Range;
+
+	// 쏜 사람과 그 무기는 트레이스에서 무시
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(ShooterFire), false, Avatar);
+	if (Weapon)
+	{
+		Params.AddIgnoredActor(Weapon);
+	}
+
+	// 3) 조준점 찾기: 카메라(화면 중앙 = 크로스헤어)에서 앞으로 트레이스
+	FVector ViewLocation = Avatar->GetActorLocation();
+	FRotator ViewRotation = Avatar->GetActorRotation();
 	if (const APawn* Pawn = Cast<APawn>(Avatar))
 	{
 		if (AController* Controller = Pawn->GetController())
 		{
-			// out 매개변수: 함수가 Start와 AimRotation에 값을 채워 넣는다 (C#의 out 키워드와 같음)
-			Controller->GetPlayerViewPoint(Start, AimRotation);
+			// out 매개변수: 함수가 ViewLocation과 ViewRotation에 값을 채워 넣는다 (C#의 out 키워드와 같음)
+			Controller->GetPlayerViewPoint(ViewLocation, ViewRotation);
 		}
 	}
-	const FVector End = Start + AimRotation.Vector() * Range;
+	const FVector ViewDir = ViewRotation.Vector();
 
-	// 3) 라인 트레이스 (Unity의 Physics.Raycast). 쏜 사람 자신은 무시
-	//    채널은 무기 전용 ECC_Weapon 사용. ECC_Visibility는 캐릭터 캡슐(Pawn 프리셋)이 무시해서 적이 안 맞았다
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(ShooterFire), false, Avatar);
+	// 카메라는 캐릭터 뒤에 있으므로, 트레이스 시작을 "캐릭터 위치까지" 앞으로 당긴다
+	// → 캐릭터와 카메라 사이에 있는 물체(뒤에 있는 적 등)를 조준점으로 잡지 않게
+	// FVector::DotProduct: 두 벡터의 내적 = 카메라→캐릭터 거리 중 시선 방향 성분 (Unity의 Vector3.Dot)
+	const float DistToAvatar = FMath::Max(0.f, FVector::DotProduct(Avatar->GetActorLocation() - ViewLocation, ViewDir));
+	const FVector AimStart = ViewLocation + ViewDir * DistToAvatar;
+	const FVector AimEnd = AimStart + ViewDir * UsedRange;
+
+	FHitResult AimHit;
+	const FVector AimPoint = World->LineTraceSingleByChannel(AimHit, AimStart, AimEnd, ECC_Weapon, Params)
+		? AimHit.ImpactPoint : AimEnd;
+
+	// 4) 실제 총알: 총구에서 조준점을 향해 트레이스 (무기가 없으면 예전처럼 카메라 기준)
+	//    채널은 무기 전용 ECC_Weapon. ECC_Visibility는 캐릭터 캡슐(Pawn 프리셋)이 무시해서 적이 안 맞았다
+	const FVector Start = Weapon ? Weapon->GetMuzzleLocation() : AimStart;
+	// 조준점에서 딱 멈추면 표면에 살짝 못 미칠 수 있어 10cm 더 연장
+	const FVector End = AimPoint + (AimPoint - Start).GetSafeNormal() * 10.f;
+
 	FHitResult Hit;
 	const bool bHit = World->LineTraceSingleByChannel(Hit, Start, End, ECC_Weapon, Params);
 
@@ -59,14 +88,14 @@ void UShooterFireAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 		}
 	}
 
-	// 4) 맞은 대상이 ASC를 가지고 있으면 데미지 Effect 적용
-	if (bHit && DamageEffect)
+	// 5) 맞은 대상이 ASC를 가지고 있으면 데미지 Effect 적용
+	if (bHit && UsedDamageEffect)
 	{
 		// IAbilitySystemInterface를 구현한 액터면 ASC를 돌려준다 (없으면 nullptr)
 		if (UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Hit.GetActor()))
 		{
 			// 어빌리티용 Spec 생성 함수: Context(쏜 사람 정보)가 자동으로 채워진다
-			FGameplayEffectSpecHandle Spec = MakeOutgoingGameplayEffectSpec(DamageEffect, GetAbilityLevel());
+			FGameplayEffectSpecHandle Spec = MakeOutgoingGameplayEffectSpec(UsedDamageEffect, GetAbilityLevel());
 			if (Spec.IsValid())
 			{
 				// 어디를 맞았는지도 기록 → 나중에 피격 이펙트(GameplayCue) 위치로 사용
@@ -78,6 +107,6 @@ void UShooterFireAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 		}
 	}
 
-	// 5) 반드시 종료 알림. 안 하면 "실행 중"으로 남아 다음 클릭이 거부된다
+	// 6) 반드시 종료 알림. 안 하면 "실행 중"으로 남아 다음 클릭이 거부된다
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }

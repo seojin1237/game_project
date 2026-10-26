@@ -10,6 +10,7 @@ class USpringArmComponent;
 class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
+class AShooterWeapon;
 struct FInputActionValue;
 
 /**
@@ -30,7 +31,21 @@ public:
 	UFUNCTION(Exec)
 	void DebugDamage();
 
+	// 지금 들고 있는 무기 (없으면 nullptr). 사격 어빌리티가 무기 데이터를 읽을 때 사용
+	AShooterWeapon* GetCurrentWeapon() const { return CurrentWeapon; }
+
+	// 새 무기를 스폰해서 손에 들기. 들고 있던 무기는 삭제 (나중에 무기 줍기/교체에 사용)
+	// BlueprintCallable : BP에서 호출 가능한 노드로 노출
+	// Category          : "Weapon" 그룹으로 표시
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	void EquipWeapon(TSubclassOf<AShooterWeapon> WeaponClass);
+
 protected:
+	// 게임 시작 시 호출 → 기본 무기 장착
+	virtual void BeginPlay() override;
+
+	// 캐릭터가 사라질 때 들고 있던 무기도 같이 정리
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	// 부모의 ASC 초기화 + 어빌리티 등록
 	virtual void PossessedBy(AController* NewController) override;
 
@@ -43,7 +58,36 @@ protected:
 	// 입력 처리 함수들 (Input Action이 발동되면 호출됨)
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
-	void Fire();
+
+	// 사격 버튼을 누른 순간 (단발/연사 무기 모두 1발)
+	void FireStarted();
+	// 사격 버튼을 누르고 있는 동안 매 프레임 (연사 무기만 계속 발사)
+	void FireHeld();
+	// 실제로 사격 어빌리티 실행을 시도하는 공통 함수
+	void TryFire();
+
+	// ===== 무기 =====
+
+	// 무기를 붙일 위치. 지금은 캡슐 오른쪽 앞 (BP 뷰포트에서 위치 조정)
+	// 나중에 스켈레탈 메시를 넣으면 이 컴포넌트의 부모를 메시의 손 소켓으로 바꾸면 된다
+	// VisibleAnywhere   : 디테일 패널에서 보이고 내부 값(위치, 부모 소켓)은 수정 가능
+	// BlueprintReadOnly : 블루프린트에서 읽기만 가능
+	// Category          : "Weapon" 그룹으로 표시
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
+	TObjectPtr<USceneComponent> WeaponAttachPoint;
+
+	// 게임 시작 시 들고 시작할 무기 (BP에서 BP_Weapon_Rifle 지정)
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "Weapon" 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	TSubclassOf<AShooterWeapon> DefaultWeaponClass;
+
+	// 지금 들고 있는 무기 인스턴스
+	// VisibleInstanceOnly : 플레이 중 배치된 캐릭터의 디테일 패널에서만 보임 (클래스 기본값에는 없음)
+	// Transient           : 저장하지 않음 (게임 중에만 존재하는 값)
+	// Category            : "Weapon" 그룹으로 표시
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Weapon")
+	TObjectPtr<AShooterWeapon> CurrentWeapon;
 
 	// ===== 카메라 =====
 

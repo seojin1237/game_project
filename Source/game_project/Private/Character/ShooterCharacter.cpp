@@ -7,6 +7,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Engine/LocalPlayer.h"
+#include "Weapon/ShooterWeapon.h"
 
 AShooterCharacter::AShooterCharacter()
 {
@@ -29,7 +30,65 @@ AShooterCharacter::AShooterCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // 봉 끝에 부착
 	FollowCamera->bUsePawnControlRotation = false;            // 회전은 봉이 담당
 
+	// ===== 무기 부착 위치 =====
+	// 캡슐 중심 기준 앞 30, 오른쪽 25, 위 20 (대략 오른손 위치). 실제 조정은 BP 뷰포트에서
+	WeaponAttachPoint = CreateDefaultSubobject<USceneComponent>(TEXT("WeaponAttachPoint"));
+	WeaponAttachPoint->SetupAttachment(RootComponent);
+	WeaponAttachPoint->SetRelativeLocation(FVector(30.f, 25.f, 20.f));
+
 	// ASC/AttributeSet 생성은 부모(AShooterCharacterBase) 생성자에서 이미 처리됨
+}
+
+void AShooterCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// 기본 무기를 들고 시작
+	if (DefaultWeaponClass)
+	{
+		EquipWeapon(DefaultWeaponClass);
+	}
+}
+
+void AShooterCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// 무기는 별도 액터라 캐릭터가 사라져도 자동으로 안 지워진다 → 직접 정리
+	if (CurrentWeapon)
+	{
+		CurrentWeapon->Destroy();
+		CurrentWeapon = nullptr;
+	}
+	Super::EndPlay(EndPlayReason);
+}
+
+void AShooterCharacter::EquipWeapon(TSubclassOf<AShooterWeapon> WeaponClass)
+{
+	UWorld* World = GetWorld();
+	if (!WeaponClass || !World)
+	{
+		return;
+	}
+
+	// 들고 있던 무기는 버린다 (지금은 삭제. 나중에 바닥에 떨어뜨리기 등으로 바꿀 수 있음)
+	if (CurrentWeapon)
+	{
+		CurrentWeapon->Destroy();
+		CurrentWeapon = nullptr;
+	}
+
+	// Owner/Instigator를 나로 지정 → 무기가 "누구 것인지" 알 수 있게
+	FActorSpawnParameters Params;
+	Params.Owner = this;
+	Params.Instigator = this;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	CurrentWeapon = World->SpawnActor<AShooterWeapon>(WeaponClass, GetActorTransform(), Params);
+	if (CurrentWeapon)
+	{
+		// AttachToComponent: 다른 컴포넌트의 자식으로 붙이기 (Unity의 transform.SetParent)
+		// SnapToTargetNotIncludingScale: 위치/회전은 부착 지점에 딱 맞추고, 크기는 무기 원래 크기 유지
+		CurrentWeapon->AttachToComponent(WeaponAttachPoint, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	}
 }
 
 void AShooterCharacter::PossessedBy(AController* NewController)
@@ -85,9 +144,10 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EIC->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 
-		// 누르고 있는 동안 매 프레임 사격 시도 → 쿨타임 GE(GE_Cooldown_Fire)가 발사 간격을 걸러준다
-		// TODO: 무기 클래스를 만들 때 단발/연사 여부를 무기 설정으로 옮길 것
-		EIC->BindAction(FireAction, ETriggerEvent::Triggered, this, &AShooterCharacter::Fire);
+		// 누른 순간 1발 + 누르고 있는 동안 매 프레임 시도(연사 무기만)
+		// 실제 발사 간격은 쿨타임 GE(GE_Cooldown_Fire)가 걸러준다
+		EIC->BindAction(FireAction, ETriggerEvent::Started, this, &AShooterCharacter::FireStarted);
+		EIC->BindAction(FireAction, ETriggerEvent::Triggered, this, &AShooterCharacter::FireHeld);
 	}
 }
 
@@ -117,7 +177,23 @@ void AShooterCharacter::Look(const FInputActionValue& Value)
 	AddControllerPitchInput(Axis.Y);
 }
 
-void AShooterCharacter::Fire()
+void AShooterCharacter::FireStarted()
+{
+	TryFire();
+}
+
+void AShooterCharacter::FireHeld()
+{
+	// 단발 무기는 누르고 있어도 추가 발사 없음 (다시 클릭해야 함)
+	// 무기가 없으면 예전처럼 연사로 동작
+	if (CurrentWeapon && !CurrentWeapon->IsAutomatic())
+	{
+		return;
+	}
+	TryFire();
+}
+
+void AShooterCharacter::TryFire()
 {
 	// 죽은 뒤에는 쏘지 않음
 	if (IsDead())

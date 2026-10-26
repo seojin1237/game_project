@@ -27,6 +27,7 @@ protected:
 		const FGameplayEventData* TriggerEventData) override;
 
 	// 맞은 대상에게 적용할 데미지 Effect (BP에서 GE_Damage 지정)
+	// 무기를 들고 있으면 무기의 DamageEffect/Range가 우선. 이 값들은 무기가 없을 때의 기본값
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
 	// Category         : "Fire" 그룹으로 표시
 	UPROPERTY(EditDefaultsOnly, Category = "Fire")
