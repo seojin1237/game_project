@@ -39,17 +39,6 @@ AShooterCharacter::AShooterCharacter()
 	// ASC/AttributeSet 생성은 부모(AShooterCharacterBase) 생성자에서 이미 처리됨
 }
 
-void AShooterCharacter::BeginPlay()
-{
-	Super::BeginPlay();
-
-	// 기본 무기를 들고 시작
-	if (DefaultWeaponClass)
-	{
-		EquipWeapon(DefaultWeaponClass);
-	}
-}
-
 void AShooterCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	// 무기는 별도 액터라 캐릭터가 사라져도 자동으로 안 지워진다 → 직접 정리
@@ -67,6 +56,13 @@ void AShooterCharacter::EquipWeapon(TSubclassOf<AShooterWeapon> WeaponClass)
 	if (!WeaponClass || !World)
 	{
 		return;
+	}
+
+	// 이전 무기의 스탯 GE 제거 (영수증(Handle)으로 정확히 그 효과만 지운다)
+	if (AbilitySystemComponent && WeaponEffectHandle.IsValid())
+	{
+		AbilitySystemComponent->RemoveActiveGameplayEffect(WeaponEffectHandle);
+		WeaponEffectHandle.Invalidate();
 	}
 
 	// 들고 있던 무기는 버린다 (지금은 삭제. 나중에 바닥에 떨어뜨리기 등으로 바꿀 수 있음)
@@ -88,6 +84,21 @@ void AShooterCharacter::EquipWeapon(TSubclassOf<AShooterWeapon> WeaponClass)
 		// AttachToComponent: 다른 컴포넌트의 자식으로 붙이기 (Unity의 transform.SetParent)
 		// SnapToTargetNotIncludingScale: 위치/회전은 부착 지점에 딱 맞추고, 크기는 무기 원래 크기 유지
 		CurrentWeapon->AttachToComponent(WeaponAttachPoint, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+
+		// 새 무기의 스탯 GE를 나에게 적용 (Infinite GE라 제거할 때까지 유지)
+		if (AbilitySystemComponent && CurrentWeapon->GetEquipEffect())
+		{
+			// Context에 "이 효과의 출처는 이 무기"라고 기록 (디버깅/확장용)
+			FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+			Context.AddSourceObject(CurrentWeapon);
+
+			const FGameplayEffectSpecHandle Spec = AbilitySystemComponent->MakeOutgoingSpec(CurrentWeapon->GetEquipEffect(), 1.f, Context);
+			if (Spec.IsValid())
+			{
+				// 반환값(Handle)을 저장해 둬야 나중에 이 효과만 골라서 제거할 수 있다
+				WeaponEffectHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+			}
+		}
 	}
 }
 
@@ -102,6 +113,15 @@ void AShooterCharacter::PossessedBy(AController* NewController)
 	{
 		// Spec = 어빌리티 클래스 + 레벨(1)을 묶은 "등록 정보"
 		AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(FireAbility, 1));
+	}
+
+	// 기본 무기 장착. BeginPlay가 아니라 여기서 하는 이유:
+	// 무기 스탯 GE를 걸려면 ASC가 초기화(부모 PossessedBy의 InitAbilityActorInfo)된 뒤여야 하는데,
+	// GameMode가 스폰한 플레이어는 BeginPlay → PossessedBy 순서로 호출되기 때문
+	// (재빙의될 때 무기를 또 만들지 않도록 이미 들고 있으면 건너뜀)
+	if (DefaultWeaponClass && !CurrentWeapon)
+	{
+		EquipWeapon(DefaultWeaponClass);
 	}
 }
 

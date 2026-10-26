@@ -34,6 +34,7 @@ public:
 	TSubclassOf<UGameplayEffect> GetDamageEffect() const { return DamageEffect; }
 	float GetRange() const { return Range; }
 	bool IsAutomatic() const { return bAutomatic; }
+	TSubclassOf<UGameplayEffect> GetEquipEffect() const { return EquipEffect; }
 
 protected:
 	// 총 모양. 지금은 임시로 BP에서 큐브를 늘려서 사용
@@ -64,4 +65,13 @@ protected:
 	// 실제 발사 간격은 여전히 FireInterval 속성 + 쿨타임 GE가 정한다
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Fire")
 	bool bAutomatic = true;
+
+	// 이 무기를 들고 있는 동안 주인에게 걸리는 스탯 GE (Infinite로 만들 것)
+	// 예: 권총 = AttackPower ×1.5 / 기관총 = FireInterval ×0.5, AttackPower ×0.7
+	// 장착하면 적용, 다른 무기로 바꾸면 제거된다. 비워두면 스탯 변화 없음
+	// (스탯을 C++ 변수로 두지 않고 GE로 만드는 이유: 업그레이드 GE와 같은 방식으로 자연스럽게 합쳐지고, BP에서 수치 조절 가능)
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "Weapon|Stats" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Stats")
+	TSubclassOf<UGameplayEffect> EquipEffect;
 };

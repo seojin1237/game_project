@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Character/ShooterCharacterBase.h"
+#include "ActiveGameplayEffectHandle.h"
 #include "ShooterCharacter.generated.h"
 
 class UGameplayEffect;
@@ -41,12 +42,9 @@ public:
 	void EquipWeapon(TSubclassOf<AShooterWeapon> WeaponClass);
 
 protected:
-	// 게임 시작 시 호출 → 기본 무기 장착
-	virtual void BeginPlay() override;
-
 	// 캐릭터가 사라질 때 들고 있던 무기도 같이 정리
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	// 부모의 ASC 초기화 + 어빌리티 등록
+	// 부모의 ASC 초기화 + 어빌리티 등록 + 기본 무기 장착
 	virtual void PossessedBy(AController* NewController) override;
 
 	// 컨트롤러가 바뀌었을 때 호출 → 여기서 Input Mapping Context를 등록한다
@@ -88,6 +86,10 @@ protected:
 	// Category            : "Weapon" 그룹으로 표시
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Weapon")
 	TObjectPtr<AShooterWeapon> CurrentWeapon;
+
+	// 지금 무기의 EquipEffect가 적용된 "영수증". 무기를 바꿀 때 이걸로 정확히 그 효과만 제거한다
+	// (C#에서 이벤트 구독 해제용으로 핸들러를 기억해 두는 것과 비슷)
+	FActiveGameplayEffectHandle WeaponEffectHandle;
 
 	// ===== 카메라 =====
 
