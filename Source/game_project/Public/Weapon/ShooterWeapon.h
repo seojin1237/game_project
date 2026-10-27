@@ -37,7 +37,16 @@ public:
 	TSubclassOf<UGameplayEffect> GetEquipEffect() const { return EquipEffect; }
 
 protected:
-	// 총 모양. 지금은 임시로 BP에서 큐브를 늘려서 사용
+	// 무기의 기준점(루트). 손에 붙일 때 이 컴포넌트가 부착 지점에 딱 맞춰진다
+	// 메시를 루트로 두지 않는 이유: 부착 시 루트의 회전은 부착 지점 회전으로 덮어써지므로,
+	// 메시 에셋마다 다른 방향(Lyra 총은 +Y가 앞)을 맞추려면 메시가 루트 아래 자식이어야 회전을 줄 수 있다
+	// VisibleAnywhere   : 디테일 패널에서 보이고 내부 값은 수정 가능
+	// BlueprintReadOnly : 블루프린트에서 읽기만 가능
+	// Category          : "Weapon" 그룹으로 표시
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
+	TObjectPtr<USceneComponent> WeaponRoot;
+
+	// 총 모양. BP에서 메시 지정 + 회전/위치를 맞춘다 (+X가 총구 방향이 되도록)
 	// VisibleAnywhere   : 디테일 패널에서 보이고 내부 값(메시, 크기 등)은 수정 가능
 	// BlueprintReadOnly : 블루프린트에서 읽기만 가능
 	// Category          : "Weapon" 그룹으로 표시
