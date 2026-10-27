@@ -41,6 +41,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void EquipWeapon(TSubclassOf<AShooterWeapon> WeaponClass);
 
+	// WeaponSlots의 SlotIndex번째 무기로 교체 (0부터 시작). 이미 그 무기를 들고 있거나 번호가 없으면 무시
+	// BlueprintCallable : BP에서 호출 가능한 노드로 노출 (나중에 UI 버튼 등에서 사용)
+	// Category          : "Weapon" 그룹으로 표시
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	void EquipSlot(int32 SlotIndex);
+
 protected:
 	// 모든 컴포넌트가 만들어진 직후 호출 → 무기 부착 지점을 메시의 손 소켓에 붙인다
 	// (생성자에서는 BP에서 바꾼 소켓 이름이 아직 반영 전이라 여기서 한다)
@@ -85,11 +91,20 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	FName WeaponSocketName = TEXT("HandGrip_R");
 
-	// 게임 시작 시 들고 시작할 무기 (BP에서 BP_Weapon_Rifle 지정)
+	// 들고 다니는 무기 목록. [0] = 1번 키, [1] = 2번 키 ... 게임 시작 시 [0]을 든다
+	// (BP에서 BP_Weapon_Rifle, BP_Weapon_SMG, BP_Weapon_Pistol 순서로 지정)
+	// TArray = 크기가 변하는 배열 (C#의 List<T>)
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
 	// Category         : "Weapon" 그룹으로 표시
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
-	TSubclassOf<AShooterWeapon> DefaultWeaponClass;
+	TArray<TSubclassOf<AShooterWeapon>> WeaponSlots;
+
+	// 지금 들고 있는 슬롯 번호 (INDEX_NONE = -1 = 아직 아무것도 안 듦)
+	// VisibleInstanceOnly : 플레이 중 배치된 캐릭터의 디테일 패널에서만 보임
+	// Transient           : 저장하지 않음 (게임 중에만 존재하는 값)
+	// Category            : "Weapon" 그룹으로 표시
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Weapon")
+	int32 CurrentSlotIndex = INDEX_NONE;
 
 	// 지금 들고 있는 무기 인스턴스
 	// VisibleInstanceOnly : 플레이 중 배치된 캐릭터의 디테일 패널에서만 보임 (클래스 기본값에는 없음)
@@ -138,6 +153,10 @@ protected:
 	// 사격 (마우스 왼쪽, bool)
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> FireAction;
+
+	// 무기 슬롯 교체 (1/2/3 키, bool). [0]을 누르면 WeaponSlots[0]으로 교체
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TArray<TObjectPtr<UInputAction>> EquipSlotActions;
 
 	// ===== GAS (ASC/AttributeSet은 부모에 있음) =====
 

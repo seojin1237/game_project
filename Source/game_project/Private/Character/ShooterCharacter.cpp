@@ -126,13 +126,32 @@ void AShooterCharacter::PossessedBy(AController* NewController)
 		AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(FireAbility, 1));
 	}
 
-	// 기본 무기 장착. BeginPlay가 아니라 여기서 하는 이유:
+	// 첫 번째 슬롯 무기 장착. BeginPlay가 아니라 여기서 하는 이유:
 	// 무기 스탯 GE를 걸려면 ASC가 초기화(부모 PossessedBy의 InitAbilityActorInfo)된 뒤여야 하는데,
 	// GameMode가 스폰한 플레이어는 BeginPlay → PossessedBy 순서로 호출되기 때문
 	// (재빙의될 때 무기를 또 만들지 않도록 이미 들고 있으면 건너뜀)
-	if (DefaultWeaponClass && !CurrentWeapon)
+	if (!CurrentWeapon)
 	{
-		EquipWeapon(DefaultWeaponClass);
+		EquipSlot(0);
+	}
+}
+
+void AShooterCharacter::EquipSlot(int32 SlotIndex)
+{
+	// IsValidIndex: 배열 범위 안의 번호인지 확인 (C#에서 index < list.Count 검사와 같음)
+	// 같은 슬롯을 다시 누르면 무기를 새로 만들 필요가 없으니 무시, 죽은 뒤에도 무시
+	if (!WeaponSlots.IsValidIndex(SlotIndex) || SlotIndex == CurrentSlotIndex || IsDead())
+	{
+		return;
+	}
+
+	// 실제 교체(이전 무기·스탯 GE 정리 → 새 무기 스폰·부착 → 새 스탯 GE 적용)는 EquipWeapon이 전부 처리
+	EquipWeapon(WeaponSlots[SlotIndex]);
+
+	// 스폰에 성공했을 때만 번호를 기억 (슬롯이 비어 있었으면 그대로)
+	if (CurrentWeapon)
+	{
+		CurrentSlotIndex = SlotIndex;
 	}
 }
 
@@ -179,6 +198,13 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		// 실제 발사 간격은 쿨타임 GE(GE_Cooldown_Fire)가 걸러준다
 		EIC->BindAction(FireAction, ETriggerEvent::Started, this, &AShooterCharacter::FireStarted);
 		EIC->BindAction(FireAction, ETriggerEvent::Triggered, this, &AShooterCharacter::FireHeld);
+
+		// 무기 교체 키: 키마다 함수를 따로 만들지 않고, 같은 EquipSlot에 "몇 번 슬롯인지"를 덧붙여 연결
+		// BindAction 마지막 인자(i)는 호출될 때 함수에 그대로 전달된다 (C#으로 치면 () => EquipSlot(i) 람다)
+		for (int32 i = 0; i < EquipSlotActions.Num(); ++i)
+		{
+			EIC->BindAction(EquipSlotActions[i], ETriggerEvent::Started, this, &AShooterCharacter::EquipSlot, i);
+		}
 	}
 }
 
