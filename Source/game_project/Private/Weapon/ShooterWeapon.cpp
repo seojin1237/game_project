@@ -1,5 +1,6 @@
 #include "Weapon/ShooterWeapon.h"
 #include "Components/StaticMeshComponent.h"
+#include "NiagaraFunctionLibrary.h"
 
 AShooterWeapon::AShooterWeapon()
 {
@@ -35,4 +36,19 @@ FVector AShooterWeapon::GetMuzzleLocation() const
 {
 	// GetComponentLocation: 컴포넌트의 월드 좌표 (Unity의 transform.position)
 	return Muzzle ? Muzzle->GetComponentLocation() : GetActorLocation();
+}
+
+void AShooterWeapon::PlayMuzzleFlash() const
+{
+	if (!MuzzleFlashEffect || !Muzzle)
+	{
+		return;
+	}
+
+	// SpawnSystemAttached: 이펙트를 컴포넌트에 "붙여서" 생성 (Unity로 치면 총구 자식으로 Instantiate)
+	// 그냥 월드 위치에 스폰하면 달리면서 쏠 때 화염이 허공에 남지만, 붙이면 총구를 따라간다
+	// KeepRelativeOffset + 위치/회전 0 = 총구 위치에 그대로
+	// bAutoDestroy(true): 재생이 끝나면 컴포넌트를 자동 삭제 → 연사해도 쌓이지 않는다
+	UNiagaraFunctionLibrary::SpawnSystemAttached(MuzzleFlashEffect, Muzzle, NAME_None,
+		FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::KeepRelativeOffset, true);
 }

@@ -31,6 +31,9 @@ public class game_project : ModuleRules
         // UMG 내부가 사용하는 저수준 UI 프레임워크 (헤더에 노출하지 않으므로 Private)
         PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 
+        // Niagara 이펙트를 C++에서 스폰 (총구 화염). 헤더에는 전방 선언만 쓰므로 Private
+        PrivateDependencyModuleNames.Add("Niagara");
+
         // Uncomment if you are using Slate UI
         // PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 

@@ -45,6 +45,12 @@ void UShooterFireAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 		ShooterCharacter->PlayAnimMontage(Weapon->GetFireMontage());
 	}
 
+	// 총구 화염. 어떤 이펙트를 쓸지는 무기가 알고 있으므로 무기에게 맡긴다
+	if (Weapon)
+	{
+		Weapon->PlayMuzzleFlash();
+	}
+
 	// 쏜 사람과 그 무기는 트레이스에서 무시
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(ShooterFire), false, Avatar);
 	if (Weapon)

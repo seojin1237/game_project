@@ -8,6 +8,7 @@ class UStaticMeshComponent;
 class USceneComponent;
 class UGameplayEffect;
 class UAnimMontage;
+class UNiagaraSystem;
 
 /**
  * 총 1자루 (BP_Weapon_Rifle 같은 무기 BP의 C++ 부모).
@@ -40,6 +41,9 @@ public:
 	bool IsAutomatic() const { return bAutomatic; }
 	TSubclassOf<UGameplayEffect> GetEquipEffect() const { return EquipEffect; }
 	UAnimMontage* GetFireMontage() const { return FireMontage; }
+
+	// 총구 화염 이펙트를 총구 위치에 1번 재생 (MuzzleFlashEffect가 비어 있으면 아무것도 안 함)
+	void PlayMuzzleFlash() const;
 
 protected:
 	// 무기의 기준점(루트). 손에 붙일 때 이 컴포넌트가 부착 지점에 딱 맞춰진다
@@ -90,6 +94,13 @@ protected:
 	// Category         : "Weapon|Fire" 하위 그룹으로 표시
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Fire")
 	TObjectPtr<UAnimMontage> FireMontage;
+
+	// 쏠 때마다 총구에서 재생할 Niagara 이펙트 (BP에서 NS_MuzzleFlash 등 지정, 비우면 재생 안 함)
+	// Niagara System = 언리얼의 파티클 이펙트 에셋 (Unity의 Particle System / VFX Graph)
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "Weapon|Effects" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Effects")
+	TObjectPtr<UNiagaraSystem> MuzzleFlashEffect;
 
 	// 이 무기를 들고 있는 동안 주인에게 걸리는 스탯 GE (Infinite로 만들 것)
 	// 예: 권총 = AttackPower ×1.5 / 기관총 = FireInterval ×0.5, AttackPower ×0.7
