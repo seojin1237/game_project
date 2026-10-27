@@ -7,6 +7,7 @@
 class UStaticMeshComponent;
 class USceneComponent;
 class UGameplayEffect;
+class UAnimMontage;
 
 /**
  * 총 1자루 (BP_Weapon_Rifle 같은 무기 BP의 C++ 부모).
@@ -38,6 +39,7 @@ public:
 	float GetRange() const { return Range; }
 	bool IsAutomatic() const { return bAutomatic; }
 	TSubclassOf<UGameplayEffect> GetEquipEffect() const { return EquipEffect; }
+	UAnimMontage* GetFireMontage() const { return FireMontage; }
 
 protected:
 	// 무기의 기준점(루트). 손에 붙일 때 이 컴포넌트가 부착 지점에 딱 맞춰진다
@@ -81,6 +83,13 @@ protected:
 	// 실제 발사 간격은 여전히 FireInterval 속성 + 쿨타임 GE가 정한다
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Fire")
 	bool bAutomatic = true;
+
+	// 쏠 때마다 캐릭터가 재생할 사격 애니메이션 (BP에서 AM_Rifle_Fire 등 지정, 비우면 재생 안 함)
+	// Montage = 코드에서 원하는 순간에 재생할 수 있는 애니메이션 에셋 (ABP의 Slot 노드를 통해 섞여 들어감)
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "Weapon|Fire" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Fire")
+	TObjectPtr<UAnimMontage> FireMontage;
 
 	// 이 무기를 들고 있는 동안 주인에게 걸리는 스탯 GE (Infinite로 만들 것)
 	// 예: 권총 = AttackPower ×1.5 / 기관총 = FireInterval ×0.5, AttackPower ×0.7

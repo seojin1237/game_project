@@ -33,10 +33,17 @@ void UShooterFireAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 	}
 
 	// 2) 들고 있는 무기의 데이터 사용. 무기가 없으면 이 어빌리티(GA_Fire)에 지정한 값으로 대체
-	const AShooterCharacter* ShooterCharacter = Cast<AShooterCharacter>(Avatar);
+	AShooterCharacter* ShooterCharacter = Cast<AShooterCharacter>(Avatar);
 	const AShooterWeapon* Weapon = ShooterCharacter ? ShooterCharacter->GetCurrentWeapon() : nullptr;
 	const TSubclassOf<UGameplayEffect> UsedDamageEffect = (Weapon && Weapon->GetDamageEffect()) ? Weapon->GetDamageEffect() : DamageEffect;
 	const float UsedRange = Weapon ? Weapon->GetRange() : Range;
+
+	// 사격 애니메이션(반동) 재생. 연사 중이면 처음부터 다시 재생되어 매 발마다 반동이 보인다
+	// PlayAnimMontage: ACharacter 기본 함수. 메시의 AnimInstance에 Montage 재생을 요청 (Unity의 Animator.Play와 비슷)
+	if (ShooterCharacter && Weapon && Weapon->GetFireMontage())
+	{
+		ShooterCharacter->PlayAnimMontage(Weapon->GetFireMontage());
+	}
 
 	// 쏜 사람과 그 무기는 트레이스에서 무시
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(ShooterFire), false, Avatar);
