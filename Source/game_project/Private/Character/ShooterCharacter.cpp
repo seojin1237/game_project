@@ -151,6 +151,12 @@ void AShooterCharacter::PossessedBy(AController* NewController)
 	if (!CurrentWeapon)
 	{
 		EquipSlot(0);
+
+		// 게임 시작은 "이미 총을 든 상태"로 본다 → 교체 애니메이션과 사격 금지(State.Equipping)를 바로 끝낸다
+		// (안 그러면 시작하자마자 교체 시간만큼 쏘지도 장전하지도 못한다)
+		StopAnimMontage();                                   // 인자 없이 부르면 지금 재생 중인 Montage를 멈춘다
+		GetWorldTimerManager().ClearTimer(EquipTimerHandle); // 예약해 둔 EndEquip 타이머 취소
+		EndEquip();
 	}
 }
 
