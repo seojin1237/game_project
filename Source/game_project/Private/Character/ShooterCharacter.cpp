@@ -31,12 +31,23 @@ AShooterCharacter::AShooterCharacter()
 	FollowCamera->bUsePawnControlRotation = false;            // 회전은 봉이 담당
 
 	// ===== 무기 부착 위치 =====
-	// 캡슐 중심 기준 앞 30, 오른쪽 25, 위 20 (대략 오른손 위치). 실제 조정은 BP 뷰포트에서
+	// 일단 메시에 붙여 두고, 실제 손 소켓 부착은 PostInitializeComponents에서 한다
 	WeaponAttachPoint = CreateDefaultSubobject<USceneComponent>(TEXT("WeaponAttachPoint"));
-	WeaponAttachPoint->SetupAttachment(RootComponent);
-	WeaponAttachPoint->SetRelativeLocation(FVector(30.f, 25.f, 20.f));
+	WeaponAttachPoint->SetupAttachment(GetMesh());
 
 	// ASC/AttributeSet 생성은 부모(AShooterCharacterBase) 생성자에서 이미 처리됨
+}
+
+void AShooterCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	// 무기 부착 지점을 손 소켓으로 옮긴다
+	// KeepRelativeTransform: BP에서 지정한 위치/회전 오프셋을 "소켓 기준"으로 그대로 유지
+	if (WeaponAttachPoint && GetMesh())
+	{
+		WeaponAttachPoint->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, WeaponSocketName);
+	}
 }
 
 void AShooterCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)

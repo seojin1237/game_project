@@ -42,6 +42,10 @@ public:
 	void EquipWeapon(TSubclassOf<AShooterWeapon> WeaponClass);
 
 protected:
+	// 모든 컴포넌트가 만들어진 직후 호출 → 무기 부착 지점을 메시의 손 소켓에 붙인다
+	// (생성자에서는 BP에서 바꾼 소켓 이름이 아직 반영 전이라 여기서 한다)
+	virtual void PostInitializeComponents() override;
+
 	// 캐릭터가 사라질 때 들고 있던 무기도 같이 정리
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	// 부모의 ASC 초기화 + 어빌리티 등록 + 기본 무기 장착
@@ -66,13 +70,20 @@ protected:
 
 	// ===== 무기 =====
 
-	// 무기를 붙일 위치. 지금은 캡슐 오른쪽 앞 (BP 뷰포트에서 위치 조정)
-	// 나중에 스켈레탈 메시를 넣으면 이 컴포넌트의 부모를 메시의 손 소켓으로 바꾸면 된다
-	// VisibleAnywhere   : 디테일 패널에서 보이고 내부 값(위치, 부모 소켓)은 수정 가능
+	// 무기를 붙일 위치. 게임 시작 시 캐릭터 메시의 WeaponSocketName 소켓(손)에 붙는다
+	// 이 컴포넌트의 위치/회전 = "손 소켓 기준으로 총을 얼마나 옮기고 돌릴지" (BP에서 미세 조정)
+	// VisibleAnywhere   : 디테일 패널에서 보이고 내부 값(위치, 회전)은 수정 가능
 	// BlueprintReadOnly : 블루프린트에서 읽기만 가능
 	// Category          : "Weapon" 그룹으로 표시
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
 	TObjectPtr<USceneComponent> WeaponAttachPoint;
+
+	// 무기를 붙일 메시 소켓 이름 (UE5 마네킹: HandGrip_R = 오른손 총 손잡이 위치)
+	// 메시에 이 소켓이 없으면 메시 원점에 붙는다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능
+	// Category         : "Weapon" 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	FName WeaponSocketName = TEXT("HandGrip_R");
 
 	// 게임 시작 시 들고 시작할 무기 (BP에서 BP_Weapon_Rifle 지정)
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
