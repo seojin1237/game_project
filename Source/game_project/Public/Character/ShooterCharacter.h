@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Character/ShooterCharacterBase.h"
 #include "ActiveGameplayEffectHandle.h"
+#include "GameplayAbilitySpecHandle.h"
 #include "ShooterCharacter.generated.h"
 
 class UGameplayEffect;
@@ -73,6 +74,9 @@ protected:
 	void FireHeld();
 	// 실제로 사격 어빌리티 실행을 시도하는 공통 함수
 	void TryFire();
+
+	// 재장전 키(R)를 누른 순간 → 재장전 어빌리티 실행 시도
+	void TryReload();
 
 	// 질주 키(Shift)를 누른 순간 / 뗀 순간
 	void StartSprint();
@@ -184,6 +188,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> SprintAction;
 
+	// 재장전 (R, bool)
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> ReloadAction;
+
 	// ===== GAS (ASC/AttributeSet은 부모에 있음) =====
 
 	// 사격 어빌리티 클래스 (BP에서 GA_Fire 지정). 게임 시작 시 ASC에 등록(Grant)된다
@@ -191,6 +199,13 @@ protected:
 	// Category         : "GAS|Abilities" 하위 그룹으로 표시
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities")
 	TSubclassOf<UGameplayAbility> FireAbility;
+
+	// 재장전 어빌리티 클래스 (BP에서 GA_Reload 지정). 게임 시작 시 ASC에 등록된다 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities")
+	TSubclassOf<UGameplayAbility> ReloadAbility;
+
+	// 등록된 재장전 어빌리티의 "번호표". 무기를 바꿀 때 이걸로 진행 중인 재장전을 취소한다
+	FGameplayAbilitySpecHandle ReloadAbilityHandle;
 
 	// 질주 GE (BP에서 GE_Sprint 지정). Infinite로 만들고 MoveSpeed 배율 + Granted Tags에 State.Sprinting
 	// 속도 배율을 C++에 하드코딩하지 않고 GE에 두면, 이동속도 업그레이드와도 자연스럽게 곱해지고 BP에서 조절 가능

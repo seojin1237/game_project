@@ -43,6 +43,7 @@ public:
 	TSubclassOf<UGameplayEffect> GetEquipEffect() const { return EquipEffect; }
 	UAnimMontage* GetFireMontage() const { return FireMontage; }
 	UAnimMontage* GetEquipMontage() const { return EquipMontage; }
+	UAnimMontage* GetReloadMontage() const { return ReloadMontage; }
 
 	// 총구 화염 이펙트를 총구 위치에 1번 재생 (MuzzleFlashEffect가 비어 있으면 아무것도 안 함)
 	void PlayMuzzleFlash() const;
@@ -110,6 +111,13 @@ protected:
 	// Category         : "Weapon|Equip" 하위 그룹으로 표시
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Equip")
 	TObjectPtr<UAnimMontage> EquipMontage;
+
+	// 재장전 애니메이션 (BP에서 AM_Rifle_Reload 등 지정). 이 Montage가 끝나는 순간 탄창이 채워진다
+	// → 재장전 시간 = Montage 길이 ÷ Rate Scale. 시간 조절은 Montage의 Rate Scale로 (비우면 즉시 재장전)
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "Weapon|Reload" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Reload")
+	TObjectPtr<UAnimMontage> ReloadMontage;
 
 	// 쏠 때마다 총구에서 재생할 Niagara 이펙트 (BP에서 NS_MuzzleFlash 등 지정, 비우면 재생 안 함)
 	// Niagara System = 언리얼의 파티클 이펙트 에셋 (Unity의 Particle System / VFX Graph)

@@ -18,4 +18,6 @@ namespace ShooterTags
 	GAME_PROJECT_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_InAir);
 	// 무기 교체 애니메이션 재생 중
 	GAME_PROJECT_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Equipping);
+	// 재장전 중. 재장전 어빌리티(GA_Reload)가 실행되는 동안 자동으로 붙는다 (Activation Owned Tags)
+	GAME_PROJECT_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Reloading);
 }

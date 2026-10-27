@@ -138,6 +138,11 @@ void AShooterCharacter::PossessedBy(AController* NewController)
 		// Spec = 어빌리티 클래스 + 레벨(1)을 묶은 "등록 정보"
 		AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(FireAbility, 1));
 	}
+	if (AbilitySystemComponent && ReloadAbility)
+	{
+		// GiveAbility의 반환값(번호표)을 저장 → 나중에 이 어빌리티만 골라서 취소할 수 있다
+		ReloadAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(ReloadAbility, 1));
+	}
 
 	// 첫 번째 슬롯 무기 장착. BeginPlay가 아니라 여기서 하는 이유:
 	// 무기 스탯 GE를 걸려면 ASC가 초기화(부모 PossessedBy의 InitAbilityActorInfo)된 뒤여야 하는데,
@@ -156,6 +161,12 @@ void AShooterCharacter::EquipSlot(int32 SlotIndex)
 	if (!WeaponSlots.IsValidIndex(SlotIndex) || SlotIndex == CurrentSlotIndex || IsDead())
 	{
 		return;
+	}
+
+	// 재장전 중이었다면 취소 (탄창이 채워지기 전에 끊기므로, 바꾼 무기에 엉뚱하게 탄약이 채워지지 않는다)
+	if (AbilitySystemComponent && ReloadAbilityHandle.IsValid())
+	{
+		AbilitySystemComponent->CancelAbilityHandle(ReloadAbilityHandle);
 	}
 
 	// 바꾸기 전에 지금 무기의 남은 탄약을 슬롯별로 저장 → 다시 꺼내 들면 그대로 (무기 교체로 공짜 재장전 방지)
@@ -296,6 +307,9 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 			EIC->BindAction(EquipSlotActions[i], ETriggerEvent::Started, this, &AShooterCharacter::EquipSlot, i);
 		}
 
+		// 재장전: 누른 순간 1번
+		EIC->BindAction(ReloadAction, ETriggerEvent::Started, this, &AShooterCharacter::TryReload);
+
 		// 질주: 누른 순간 시작, 뗀 순간 끝 (점프와 같은 Started/Completed 패턴)
 		EIC->BindAction(SprintAction, ETriggerEvent::Started, this, &AShooterCharacter::StartSprint);
 		EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &AShooterCharacter::StopSprint);
@@ -356,7 +370,23 @@ void AShooterCharacter::TryFire()
 	{
 		// 등록된 어빌리티 중 이 클래스를 찾아 실행 시도.
 		// 쿨타임 중이거나 실행 조건이 안 맞으면 GAS가 알아서 거부한다 (반환값 false)
-		AbilitySystemComponent->TryActivateAbilityByClass(FireAbility);
+		const bool bFired = AbilitySystemComponent->TryActivateAbilityByClass(FireAbility);
+
+		// 못 쐈는데 탄창이 비어 있으면 자동 재장전 (빈 총으로 클릭 = 재장전, 대부분의 슈터와 같은 동작)
+		// 이미 재장전 중이면 GAS가 중복 실행을 거부하므로, 연사 버튼을 누르고 있어도 한 번만 시작된다
+		if (!bFired && AbilitySystemComponent->GetNumericAttribute(UShooterAttributeSet::GetAmmoAttribute()) <= 0.f)
+		{
+			TryReload();
+		}
+	}
+}
+
+void AShooterCharacter::TryReload()
+{
+	if (AbilitySystemComponent && ReloadAbility && !IsDead())
+	{
+		// 탄창이 가득이거나 교체 중이면 GAS가 거부한다 (UShooterReloadAbility::CanActivateAbility, Blocked Tags)
+		AbilitySystemComponent->TryActivateAbilityByClass(ReloadAbility);
 	}
 }
 
