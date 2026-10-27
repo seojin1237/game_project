@@ -1,6 +1,7 @@
 #include "Animation/ShooterAnimInstance.h"
 #include "Character/ShooterCharacter.h"
 #include "Weapon/ShooterWeapon.h"
+#include "Kismet/KismetMathLibrary.h"
 
 void UShooterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
@@ -19,5 +20,14 @@ void UShooterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	else
 	{
 		LeftHandIKAlpha = 0.f;
+	}
+
+	// 위아래 조준 각도 = (카메라가 보는 방향 - 몸이 향한 방향)의 Pitch
+	// GetBaseAimRotation: 조종 중인 컨트롤러의 시선 회전 (플레이어면 카메라 방향)
+	// NormalizedDeltaRotator: 두 회전의 차이를 -180 ~ 180도로 정리 (Pitch 270도 같은 값이 -90도로 바뀜)
+	if (Character)
+	{
+		const FRotator Delta = UKismetMathLibrary::NormalizedDeltaRotator(Character->GetBaseAimRotation(), Character->GetActorRotation());
+		AimPitch = FMath::Clamp(Delta.Pitch, -90.f, 90.f);
 	}
 }

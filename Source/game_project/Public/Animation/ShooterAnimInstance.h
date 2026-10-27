@@ -33,4 +33,11 @@ protected:
 	// 무기가 없거나 죽었으면 0 → 팔이 이상하게 꺾이지 않게 (지정자 의미는 위와 동일)
 	UPROPERTY(BlueprintReadOnly, Category = "Shooter|IK")
 	float LeftHandIKAlpha = 0.f;
+
+	// 위아래 조준 각도 (도). 위를 보면 +, 아래를 보면 - (약 -90 ~ 90)
+	// ABP의 Aim Offset 노드(AO_Rifle)에 연결해서 상체와 총이 바라보는 방향을 따라가게 한다
+	// BlueprintReadOnly : ABP 그래프에서 읽기만 가능 (값은 C++이 계산)
+	// Category          : "Shooter|Aim" 하위 그룹으로 표시
+	UPROPERTY(BlueprintReadOnly, Category = "Shooter|Aim")
+	float AimPitch = 0.f;
 };
