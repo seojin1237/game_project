@@ -31,6 +31,9 @@ public:
 	// 총알이 나가는 위치 (총구). 사격 어빌리티가 트레이스 시작점으로 사용
 	FVector GetMuzzleLocation() const;
 
+	// 왼손이 잡을 위치 (월드 좌표). 애니메이션의 왼손 IK 목표로 사용
+	FVector GetLeftHandGripLocation() const;
+
 	TSubclassOf<UGameplayEffect> GetDamageEffect() const { return DamageEffect; }
 	float GetRange() const { return Range; }
 	bool IsAutomatic() const { return bAutomatic; }
@@ -57,6 +60,10 @@ protected:
 	// USceneComponent = 위치만 있는 빈 컴포넌트 (Unity의 빈 GameObject 자식과 같음)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
 	TObjectPtr<USceneComponent> Muzzle;
+
+	// 왼손이 잡을 위치 표시용 빈 컴포넌트 (총열 아래 손잡이 부분). BP 뷰포트에서 위치 조정 (지정자 의미는 위와 동일)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
+	TObjectPtr<USceneComponent> LeftHandGrip;
 
 	// 맞은 대상에게 적용할 데미지 Effect (BP에서 GE_Damage 지정)
 	// 무기마다 다른 GE를 넣으면 "샷건은 넉백", "저격총은 출혈" 같은 차이를 줄 수 있다

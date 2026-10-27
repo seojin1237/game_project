@@ -20,6 +20,15 @@ AShooterWeapon::AShooterWeapon()
 	// 메시의 자식이라 메시를 회전시키면 총구도 같이 돈다 → 위치는 "메시 기준 좌표"로 지정
 	// 기본 위치: 메시 앞쪽(+X) 50cm. 실제 위치는 BP 뷰포트에서 총 끝에 맞춘다
 	Muzzle->SetRelativeLocation(FVector(50.f, 0.f, 0.f));
+
+	// 총구처럼 메시의 자식 → 메시를 옮기거나 돌려도 같이 따라간다. 실제 위치는 BP에서 무기마다 지정
+	LeftHandGrip = CreateDefaultSubobject<USceneComponent>(TEXT("LeftHandGrip"));
+	LeftHandGrip->SetupAttachment(WeaponMesh);
+}
+
+FVector AShooterWeapon::GetLeftHandGripLocation() const
+{
+	return LeftHandGrip ? LeftHandGrip->GetComponentLocation() : GetActorLocation();
 }
 
 FVector AShooterWeapon::GetMuzzleLocation() const
