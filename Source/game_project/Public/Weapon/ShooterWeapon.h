@@ -41,6 +41,7 @@ public:
 	bool IsAutomatic() const { return bAutomatic; }
 	TSubclassOf<UGameplayEffect> GetEquipEffect() const { return EquipEffect; }
 	UAnimMontage* GetFireMontage() const { return FireMontage; }
+	UAnimMontage* GetEquipMontage() const { return EquipMontage; }
 
 	// 총구 화염 이펙트를 총구 위치에 1번 재생 (MuzzleFlashEffect가 비어 있으면 아무것도 안 함)
 	void PlayMuzzleFlash() const;
@@ -94,6 +95,13 @@ protected:
 	// Category         : "Weapon|Fire" 하위 그룹으로 표시
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Fire")
 	TObjectPtr<UAnimMontage> FireMontage;
+
+	// 이 무기로 바꿔 들 때 재생할 애니메이션 (BP에서 AM_Rifle_Equip 등 지정, 비우면 재생 안 함)
+	// 재생되는 동안은 State.Equipping 태그가 붙어서 사격이 막힌다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "Weapon|Equip" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Equip")
+	TObjectPtr<UAnimMontage> EquipMontage;
 
 	// 쏠 때마다 총구에서 재생할 Niagara 이펙트 (BP에서 NS_MuzzleFlash 등 지정, 비우면 재생 안 함)
 	// Niagara System = 언리얼의 파티클 이펙트 에셋 (Unity의 Particle System / VFX Graph)

@@ -8,6 +8,8 @@
 #include "InputActionValue.h"
 #include "Engine/LocalPlayer.h"
 #include "Weapon/ShooterWeapon.h"
+#include "GAS/ShooterGameplayTags.h"
+#include "TimerManager.h"
 
 AShooterCharacter::AShooterCharacter()
 {
@@ -149,9 +151,69 @@ void AShooterCharacter::EquipSlot(int32 SlotIndex)
 	EquipWeapon(WeaponSlots[SlotIndex]);
 
 	// 스폰에 성공했을 때만 번호를 기억 (슬롯이 비어 있었으면 그대로)
-	if (CurrentWeapon)
+	if (!CurrentWeapon)
 	{
-		CurrentSlotIndex = SlotIndex;
+		return;
+	}
+	CurrentSlotIndex = SlotIndex;
+
+	// 교체 애니메이션 재생. PlayAnimMontage는 재생 시간(초)을 돌려준다 (실패하면 0)
+	const float EquipDuration = CurrentWeapon->GetEquipMontage() ? PlayAnimMontage(CurrentWeapon->GetEquipMontage()) : 0.f;
+	if (AbilitySystemComponent && EquipDuration > 0.f)
+	{
+		// Loose Tag: GE 없이 코드에서 직접 붙였다 떼는 태그. 개수(Count)로 관리되며 1 이상이면 "있음"
+		// AddLoose를 쓰지 않고 Count를 1로 "설정"하는 이유: 교체 중에 또 교체해도 태그가 2개로 쌓이지 않게
+		AbilitySystemComponent->SetLooseGameplayTagCount(ShooterTags::State_Equipping, 1);
+
+		// 애니메이션이 끝나는 시점에 EndEquip 호출. 교체 중에 다시 교체하면 같은 핸들로 타이머가 새로 시작된다
+		GetWorldTimerManager().SetTimer(EquipTimerHandle, this, &AShooterCharacter::EndEquip, EquipDuration, false);
+	}
+}
+
+void AShooterCharacter::EndEquip()
+{
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->SetLooseGameplayTagCount(ShooterTags::State_Equipping, 0);
+	}
+}
+
+void AShooterCharacter::StartSprint()
+{
+	// 이미 질주 중이거나, 죽었거나, GE를 지정 안 했으면 무시
+	if (!AbilitySystemComponent || !SprintEffect || SprintEffectHandle.IsValid() || IsDead())
+	{
+		return;
+	}
+
+	// 무기 스탯 GE와 같은 방식: Spec을 만들어 나에게 적용하고, 영수증(Handle)을 저장
+	// GE 안의 MoveSpeed 배율 → OnMoveSpeedChanged → MaxWalkSpeed 로 자동 반영되고,
+	// GE의 Granted Tags(State.Sprinting) → 사격 어빌리티가 막힌다
+	const FGameplayEffectSpecHandle Spec = AbilitySystemComponent->MakeOutgoingSpec(SprintEffect, 1.f, AbilitySystemComponent->MakeEffectContext());
+	if (Spec.IsValid())
+	{
+		SprintEffectHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+	}
+}
+
+void AShooterCharacter::StopSprint()
+{
+	// GE를 제거하면 속도 배율과 State.Sprinting 태그가 같이 사라진다
+	if (AbilitySystemComponent && SprintEffectHandle.IsValid())
+	{
+		AbilitySystemComponent->RemoveActiveGameplayEffect(SprintEffectHandle);
+		SprintEffectHandle.Invalidate();
+	}
+}
+
+void AShooterCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
+{
+	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
+
+	// IsFalling: 점프 중이거나 떨어지는 중 (Unity의 !isGrounded)
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->SetLooseGameplayTagCount(ShooterTags::State_InAir, GetCharacterMovement()->IsFalling() ? 1 : 0);
 	}
 }
 
@@ -205,6 +267,10 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		{
 			EIC->BindAction(EquipSlotActions[i], ETriggerEvent::Started, this, &AShooterCharacter::EquipSlot, i);
 		}
+
+		// 질주: 누른 순간 시작, 뗀 순간 끝 (점프와 같은 Started/Completed 패턴)
+		EIC->BindAction(SprintAction, ETriggerEvent::Started, this, &AShooterCharacter::StartSprint);
+		EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &AShooterCharacter::StopSprint);
 	}
 }
 

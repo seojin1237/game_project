@@ -74,6 +74,17 @@ protected:
 	// 실제로 사격 어빌리티 실행을 시도하는 공통 함수
 	void TryFire();
 
+	// 질주 키(Shift)를 누른 순간 / 뗀 순간
+	void StartSprint();
+	void StopSprint();
+
+	// 무기 교체 애니메이션이 끝났을 때 (타이머로 호출) → State.Equipping 태그 제거
+	void EndEquip();
+
+	// 이동 모드(걷기/낙하/비행 등)가 바뀔 때 엔진이 호출 → 공중이면 State.InAir 태그를 붙인다
+	// (ACharacter의 virtual 함수 재정의. Unity라면 isGrounded가 바뀌는 순간 이벤트)
+	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode = 0) override;
+
 	// ===== 무기 =====
 
 	// 무기를 붙일 위치. 게임 시작 시 캐릭터 메시의 WeaponSocketName 소켓(손)에 붙는다
@@ -117,6 +128,9 @@ protected:
 	// (C#에서 이벤트 구독 해제용으로 핸들러를 기억해 두는 것과 비슷)
 	FActiveGameplayEffectHandle WeaponEffectHandle;
 
+	// 무기 교체 애니메이션이 끝날 때 EndEquip을 부르는 타이머 (Unity의 Invoke("EndEquip", 시간)와 비슷)
+	FTimerHandle EquipTimerHandle;
+
 	// ===== 카메라 =====
 
 	// 카메라를 캐릭터 뒤쪽에 일정 거리로 붙잡아 두는 "셀카봉". 벽에 닿으면 자동으로 줄어든다
@@ -158,6 +172,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TArray<TObjectPtr<UInputAction>> EquipSlotActions;
 
+	// 질주 (Shift, bool). 누르고 있는 동안만 질주
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> SprintAction;
+
 	// ===== GAS (ASC/AttributeSet은 부모에 있음) =====
 
 	// 사격 어빌리티 클래스 (BP에서 GA_Fire 지정). 게임 시작 시 ASC에 등록(Grant)된다
@@ -165,6 +183,16 @@ protected:
 	// Category         : "GAS|Abilities" 하위 그룹으로 표시
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities")
 	TSubclassOf<UGameplayAbility> FireAbility;
+
+	// 질주 GE (BP에서 GE_Sprint 지정). Infinite로 만들고 MoveSpeed 배율 + Granted Tags에 State.Sprinting
+	// 속도 배율을 C++에 하드코딩하지 않고 GE에 두면, 이동속도 업그레이드와도 자연스럽게 곱해지고 BP에서 조절 가능
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "GAS|Effects" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Effects")
+	TSubclassOf<UGameplayEffect> SprintEffect;
+
+	// 적용 중인 질주 GE의 영수증. Shift를 떼면 이걸로 정확히 그 GE만 제거한다
+	FActiveGameplayEffectHandle SprintEffectHandle;
 
 	// [테스트용] DebugDamage에서 적용할 GameplayEffect 클래스 (BP에서 GE_Damage 지정)
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능 (레벨에 배치된 개별 인스턴스에선 수정 불가)
