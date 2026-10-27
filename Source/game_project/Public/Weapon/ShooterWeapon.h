@@ -39,6 +39,7 @@ public:
 	TSubclassOf<UGameplayEffect> GetDamageEffect() const { return DamageEffect; }
 	float GetRange() const { return Range; }
 	bool IsAutomatic() const { return bAutomatic; }
+	int32 GetMagazineSize() const { return MagazineSize; }
 	TSubclassOf<UGameplayEffect> GetEquipEffect() const { return EquipEffect; }
 	UAnimMontage* GetFireMontage() const { return FireMontage; }
 	UAnimMontage* GetEquipMontage() const { return EquipMontage; }
@@ -88,6 +89,13 @@ protected:
 	// 실제 발사 간격은 여전히 FireInterval 속성 + 쿨타임 GE가 정한다
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Fire")
 	bool bAutomatic = true;
+
+	// 탄창 크기 (재장전 없이 쏠 수 있는 발수). 이 무기를 들면 캐릭터의 MaxAmmo 기본값이 된다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "Weapon|Fire" 하위 그룹으로 표시
+	// meta=(ClampMin)  : 1 미만 입력 방지 (0이면 영원히 못 쏨)
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Fire", meta = (ClampMin = "1"))
+	int32 MagazineSize = 30;
 
 	// 쏠 때마다 캐릭터가 재생할 사격 애니메이션 (BP에서 AM_Rifle_Fire 등 지정, 비우면 재생 안 함)
 	// Montage = 코드에서 원하는 순간에 재생할 수 있는 애니메이션 에셋 (ABP의 Slot 노드를 통해 섞여 들어감)

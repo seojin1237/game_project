@@ -13,6 +13,9 @@ UShooterAttributeSet::UShooterAttributeSet()
 	InitKillHeal(0.f);
 	InitCritChance(0.f);
 	InitCritMultiplier(2.f);
+	// 탄약은 무기를 들 때 무기의 탄창 크기로 채워진다 (적은 무기가 없으니 계속 0)
+	InitAmmo(0.f);
+	InitMaxAmmo(0.f);
 }
 
 void UShooterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -52,6 +55,14 @@ void UShooterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribut
 	else if (Attribute == GetCritMultiplierAttribute())
 	{
 		NewValue = FMath::Max(NewValue, 1.f);       // 치명타가 평타보다 약해지지 않게
+	}
+	else if (Attribute == GetAmmoAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.f, GetMaxAmmo()); // 음수나 탄창 크기 초과 방지
+	}
+	else if (Attribute == GetMaxAmmoAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.f);       // 음수 탄창 방지
 	}
 }
 

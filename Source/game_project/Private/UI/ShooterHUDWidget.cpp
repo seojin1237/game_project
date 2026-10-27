@@ -58,8 +58,15 @@ void UShooterHUDWidget::BindToAbilitySystem(UAbilitySystemComponent* InASC)
 	DeadTagHandle = InASC->RegisterGameplayTagEvent(ShooterTags::State_Dead, EGameplayTagEventType::NewOrRemoved)
 		.AddUObject(this, &UShooterHUDWidget::HandleDeadTagChanged);
 
-	// 3) 구독은 "앞으로의 변화"만 알려주므로, 현재 값으로 한 번 초기화
+	// 3) 탄약도 체력과 같은 방식으로 구독 (쏠 때, 무기 바꿀 때, 재장전할 때 바뀐다)
+	AmmoChangedHandle = InASC->GetGameplayAttributeValueChangeDelegate(UShooterAttributeSet::GetAmmoAttribute())
+		.AddUObject(this, &UShooterHUDWidget::HandleAmmoAttributeChanged);
+	MaxAmmoChangedHandle = InASC->GetGameplayAttributeValueChangeDelegate(UShooterAttributeSet::GetMaxAmmoAttribute())
+		.AddUObject(this, &UShooterHUDWidget::HandleAmmoAttributeChanged);
+
+	// 4) 구독은 "앞으로의 변화"만 알려주므로, 현재 값으로 한 번 초기화
 	RefreshHealth();
+	RefreshAmmo();
 
 	// 사망 텍스트는 처음엔 숨김 (이미 죽은 캐릭터에 연결된 경우는 보여줌)
 	if (DeathText)
@@ -91,12 +98,16 @@ void UShooterHUDWidget::UnbindFromAbilitySystem()
 		ASC->GetGameplayAttributeValueChangeDelegate(UShooterAttributeSet::GetHealthAttribute()).Remove(HealthChangedHandle);
 		ASC->GetGameplayAttributeValueChangeDelegate(UShooterAttributeSet::GetMaxHealthAttribute()).Remove(MaxHealthChangedHandle);
 		ASC->RegisterGameplayTagEvent(ShooterTags::State_Dead, EGameplayTagEventType::NewOrRemoved).Remove(DeadTagHandle);
+		ASC->GetGameplayAttributeValueChangeDelegate(UShooterAttributeSet::GetAmmoAttribute()).Remove(AmmoChangedHandle);
+		ASC->GetGameplayAttributeValueChangeDelegate(UShooterAttributeSet::GetMaxAmmoAttribute()).Remove(MaxAmmoChangedHandle);
 	}
 
 	// 번호표 초기화 (Reset = "아무것도 가리키지 않는 상태"로)
 	HealthChangedHandle.Reset();
 	MaxHealthChangedHandle.Reset();
 	DeadTagHandle.Reset();
+	AmmoChangedHandle.Reset();
+	MaxAmmoChangedHandle.Reset();
 	BoundASC.Reset();
 }
 
@@ -151,4 +162,23 @@ void UShooterHUDWidget::RefreshHealth()
 
 	// BP 연출용 이벤트
 	OnHealthUpdated(Health, MaxHealth);
+}
+
+void UShooterHUDWidget::HandleAmmoAttributeChanged(const FOnAttributeChangeData& Data)
+{
+	// 체력과 같은 이유로 Ammo/MaxAmmo 중 무엇이 바뀌었든 둘 다 다시 읽는다
+	RefreshAmmo();
+}
+
+void UShooterHUDWidget::RefreshAmmo()
+{
+	UAbilitySystemComponent* ASC = BoundASC.Get();
+	if (!ASC || !AmmoText)
+	{
+		return;
+	}
+
+	const float Ammo = ASC->GetNumericAttribute(UShooterAttributeSet::GetAmmoAttribute());
+	const float MaxAmmo = ASC->GetNumericAttribute(UShooterAttributeSet::GetMaxAmmoAttribute());
+	AmmoText->SetText(FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Ammo, MaxAmmo)));
 }

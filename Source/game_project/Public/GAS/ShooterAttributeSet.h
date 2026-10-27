@@ -72,4 +72,16 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat")
 	FGameplayAttributeData CritMultiplier;
 	ATTRIBUTE_ACCESSORS_BASIC(UShooterAttributeSet, CritMultiplier)
+
+	// 지금 탄창에 남은 탄약. 사격 어빌리티(GA_Fire)의 Cost GE(GE_Cost_Fire)가 1발마다 1씩 뺀다
+	// 0이 되면 GAS가 "비용을 낼 수 없다"고 판단해 사격 자체를 거부한다 (지정자 의미는 위와 동일)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Ammo")
+	FGameplayAttributeData Ammo;
+	ATTRIBUTE_ACCESSORS_BASIC(UShooterAttributeSet, Ammo)
+
+	// 탄창 크기. 무기를 들 때 캐릭터가 무기의 MagazineSize를 BaseValue로 넣는다
+	// 업그레이드 예: "탄창 +50%" = MaxAmmo에 MultiplyAdditive 0.5인 Infinite GE → 어떤 무기든 1.5배 (지정자 의미는 위와 동일)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Ammo")
+	FGameplayAttributeData MaxAmmo;
+	ATTRIBUTE_ACCESSORS_BASIC(UShooterAttributeSet, MaxAmmo)
 };

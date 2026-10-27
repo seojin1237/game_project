@@ -53,6 +53,12 @@ protected:
 	// ASC에서 현재 체력 값을 읽어 위젯에 반영
 	void RefreshHealth();
 
+	// ASC가 Ammo/MaxAmmo 변화를 알려줄 때 호출
+	void HandleAmmoAttributeChanged(const FOnAttributeChangeData& Data);
+
+	// ASC에서 현재 탄약 값을 읽어 위젯에 반영
+	void RefreshAmmo();
+
 	// [BP 확장용] 체력이 바뀔 때마다 호출. 피격 시 화면 깜빡임 같은 연출을 BP에서 붙일 수 있다
 	// BlueprintImplementableEvent : C++은 선언만, 몸체는 BP 이벤트 그래프에서 구현 (구현 안 하면 아무 일 없음)
 	// Category                    : "HUD" 그룹으로 표시
@@ -83,6 +89,11 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> WaveText;
 
+	// "24 / 30" 같은 탄약 표시. 없어도 된다
+	// BindWidgetOptional : 위와 동일 (선택)
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> AmmoText;
+
 private:
 	// 구독 중인 ASC. Weak 포인터 = 대상이 삭제되면 자동으로 nullptr이 되는 포인터
 	// (캐릭터가 먼저 사라져도 위젯이 "죽은 포인터"를 잡고 있지 않도록. C#의 WeakReference와 비슷)
@@ -92,6 +103,8 @@ private:
 	FDelegateHandle HealthChangedHandle;
 	FDelegateHandle MaxHealthChangedHandle;
 	FDelegateHandle DeadTagHandle;
+	FDelegateHandle AmmoChangedHandle;
+	FDelegateHandle MaxAmmoChangedHandle;
 
 	// 기존 구독을 모두 해제
 	void UnbindFromAbilitySystem();

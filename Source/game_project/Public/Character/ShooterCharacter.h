@@ -117,6 +117,14 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Weapon")
 	int32 CurrentSlotIndex = INDEX_NONE;
 
+	// 슬롯별 남은 탄약 (무기를 바꿀 때 저장, 다시 들 때 복원). -1 = 아직 한 번도 안 든 무기
+	// 탄약 자체는 Ammo Attribute에 있고, 이건 "지금 안 들고 있는 무기"의 탄약 보관용
+	// VisibleInstanceOnly : 플레이 중 배치된 캐릭터의 디테일 패널에서만 보임 (디버깅용)
+	// Transient           : 저장하지 않음 (게임 중에만 존재하는 값)
+	// Category            : "Weapon" 그룹으로 표시
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Weapon")
+	TArray<float> SlotAmmo;
+
 	// 지금 들고 있는 무기 인스턴스
 	// VisibleInstanceOnly : 플레이 중 배치된 캐릭터의 디테일 패널에서만 보임 (클래스 기본값에는 없음)
 	// Transient           : 저장하지 않음 (게임 중에만 존재하는 값)

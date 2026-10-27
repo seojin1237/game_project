@@ -17,7 +17,9 @@ void UShooterFireAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 	const FGameplayAbilityActivationInfo ActivationInfo,
 	const FGameplayEventData* TriggerEventData)
 {
-	// 1) Commit: 비용(탄약/마나)과 쿨타임을 실제로 "지불". 지금은 둘 다 없어서 항상 성공
+	// 1) Commit: 비용과 쿨타임을 실제로 "지불"
+	//    비용 = GA_Fire의 Cost Gameplay Effect(GE_Cost_Fire: Ammo -1), 쿨타임 = GE_Cooldown_Fire
+	//    탄약이 0이면 GAS가 실행 전(CanActivateAbility)에 이미 거부하므로 여기까지 오지 않는다
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);

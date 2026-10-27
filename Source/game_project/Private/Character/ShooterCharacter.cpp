@@ -9,6 +9,7 @@
 #include "Engine/LocalPlayer.h"
 #include "Weapon/ShooterWeapon.h"
 #include "GAS/ShooterGameplayTags.h"
+#include "GAS/ShooterAttributeSet.h"
 #include "TimerManager.h"
 
 AShooterCharacter::AShooterCharacter()
@@ -112,6 +113,16 @@ void AShooterCharacter::EquipWeapon(TSubclassOf<AShooterWeapon> WeaponClass)
 				WeaponEffectHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
 			}
 		}
+
+		// 새 무기의 탄창 크기를 MaxAmmo의 기본값(BaseValue)으로 넣고, 탄약을 가득 채운다
+		// SetNumericAttributeBase: GE 없이 BaseValue를 직접 바꾸는 함수 (장비 교체처럼 "설정"할 때 사용)
+		// 업그레이드 GE(MaxAmmo 배율)는 BaseValue 위에 따로 계산되므로, 어떤 무기로 바꿔도 배율이 유지된다
+		if (AbilitySystemComponent)
+		{
+			AbilitySystemComponent->SetNumericAttributeBase(UShooterAttributeSet::GetMaxAmmoAttribute(), CurrentWeapon->GetMagazineSize());
+			AbilitySystemComponent->SetNumericAttributeBase(UShooterAttributeSet::GetAmmoAttribute(),
+				AbilitySystemComponent->GetNumericAttribute(UShooterAttributeSet::GetMaxAmmoAttribute()));
+		}
 	}
 }
 
@@ -147,7 +158,18 @@ void AShooterCharacter::EquipSlot(int32 SlotIndex)
 		return;
 	}
 
-	// 실제 교체(이전 무기·스탯 GE 정리 → 새 무기 스폰·부착 → 새 스탯 GE 적용)는 EquipWeapon이 전부 처리
+	// 바꾸기 전에 지금 무기의 남은 탄약을 슬롯별로 저장 → 다시 꺼내 들면 그대로 (무기 교체로 공짜 재장전 방지)
+	// Init(값, 개수): 배열을 개수만큼 같은 값으로 채운다. -1 = "아직 한 번도 안 든 무기"
+	if (SlotAmmo.Num() != WeaponSlots.Num())
+	{
+		SlotAmmo.Init(-1.f, WeaponSlots.Num());
+	}
+	if (AbilitySystemComponent && SlotAmmo.IsValidIndex(CurrentSlotIndex))
+	{
+		SlotAmmo[CurrentSlotIndex] = AbilitySystemComponent->GetNumericAttribute(UShooterAttributeSet::GetAmmoAttribute());
+	}
+
+	// 실제 교체(이전 무기·스탯 GE 정리 → 새 무기 스폰·부착 → 새 스탯 GE·탄창 적용)는 EquipWeapon이 전부 처리
 	EquipWeapon(WeaponSlots[SlotIndex]);
 
 	// 스폰에 성공했을 때만 번호를 기억 (슬롯이 비어 있었으면 그대로)
@@ -156,6 +178,12 @@ void AShooterCharacter::EquipSlot(int32 SlotIndex)
 		return;
 	}
 	CurrentSlotIndex = SlotIndex;
+
+	// 전에 들었던 무기면 저장해 둔 탄약으로 되돌린다 (처음이면 EquipWeapon이 채운 "가득" 그대로)
+	if (AbilitySystemComponent && SlotAmmo[SlotIndex] >= 0.f)
+	{
+		AbilitySystemComponent->SetNumericAttributeBase(UShooterAttributeSet::GetAmmoAttribute(), SlotAmmo[SlotIndex]);
+	}
 
 	// 교체 애니메이션 재생. PlayAnimMontage는 재생 시간(초)을 돌려준다 (실패하면 0)
 	const float EquipDuration = CurrentWeapon->GetEquipMontage() ? PlayAnimMontage(CurrentWeapon->GetEquipMontage()) : 0.f;
