@@ -153,6 +153,13 @@ protected:
 	// (C#에서 이벤트 구독 해제용으로 핸들러를 기억해 두는 것과 비슷)
 	FActiveGameplayEffectHandle WeaponEffectHandle;
 
+	// 교체 애니메이션의 몇 %가 지나면 쏠 수 있게 할지 (0.5 = 절반). 애니메이션 자체는 끝까지 재생된다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능
+	// Category         : "Weapon" 그룹으로 표시
+	// meta=(ClampMin, ClampMax) : 0 ~ 1 범위로 제한
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon", meta = (ClampMin = "0", ClampMax = "1"))
+	float EquipLockRatio = 0.5f;
+
 	// 무기 교체 애니메이션이 끝날 때 EndEquip을 부르는 타이머 (Unity의 Invoke("EndEquip", 시간)와 비슷)
 	FTimerHandle EquipTimerHandle;
 

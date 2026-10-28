@@ -217,7 +217,8 @@ void AShooterCharacter::EquipSlot(int32 SlotIndex)
 	}
 
 	// 교체 애니메이션 재생. PlayAnimMontage는 재생 시간(초)을 돌려준다 (실패하면 0)
-	const float EquipDuration = CurrentWeapon->GetEquipMontage() ? PlayAnimMontage(CurrentWeapon->GetEquipMontage()) : 0.f;
+	// 사격 금지는 애니메이션 전체가 아니라 EquipLockRatio만큼만 (총이 올라온 뒤의 마무리 동작 동안은 쏠 수 있게)
+	const float EquipDuration = CurrentWeapon->GetEquipMontage() ? PlayAnimMontage(CurrentWeapon->GetEquipMontage()) * EquipLockRatio : 0.f;
 	if (AbilitySystemComponent && EquipDuration > 0.f)
 	{
 		// Loose Tag: GE 없이 코드에서 직접 붙였다 떼는 태그. 개수(Count)로 관리되며 1 이상이면 "있음"
