@@ -31,6 +31,11 @@ void UShooterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	// 위아래 조준 각도 = (카메라가 보는 방향 - 몸이 향한 방향)의 Pitch
 	// GetBaseAimRotation: 조종 중인 컨트롤러의 시선 회전 (플레이어면 카메라 방향)
 	// NormalizedDeltaRotator: 두 회전의 차이를 -180 ~ 180도로 정리 (Pitch 270도 같은 값이 -90도로 바뀜)
+	// 조준 중이거나 마지막 사격 후 FireAimHoldTime초 안이면 상체를 겨눈 자세로
+	// GetTimeSeconds: 게임 시작 후 흐른 시간(초) (Unity의 Time.time)
+	bUpperBodyAim = Character && Weapon && !Character->IsDead()
+		&& (Character->IsAiming() || GetWorld()->GetTimeSeconds() - Character->GetLastFireTime() < FireAimHoldTime);
+
 	if (Character)
 	{
 		const FRotator Delta = UKismetMathLibrary::NormalizedDeltaRotator(Character->GetBaseAimRotation(), Character->GetActorRotation());

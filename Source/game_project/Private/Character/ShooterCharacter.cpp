@@ -51,6 +51,20 @@ void AShooterCharacter::PostInitializeComponents()
 	{
 		WeaponAttachPoint->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, WeaponSocketName);
 	}
+
+	// BP에서 정한 평소 카메라 거리/시야각을 기억 (생성자 시점엔 BP 값이 아직 반영 전이라 여기서)
+	DefaultArmLength = CameraBoom->TargetArmLength;
+	DefaultFOV = FollowCamera->FieldOfView;
+}
+
+void AShooterCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	// 조준 중이면 카메라를 당기고 시야각을 좁혀 확대, 아니면 평소 값으로. FInterpTo로 매 프레임 조금씩 따라가게 해서 부드럽게
+	const bool bAiming = IsAiming() && !IsDead();
+	CameraBoom->TargetArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, bAiming ? AimArmLength : DefaultArmLength, DeltaSeconds, AimInterpSpeed);
+	FollowCamera->SetFieldOfView(FMath::FInterpTo(FollowCamera->FieldOfView, bAiming ? AimFOV : DefaultFOV, DeltaSeconds, AimInterpSpeed));
 }
 
 void AShooterCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -225,8 +239,8 @@ void AShooterCharacter::EndEquip()
 
 void AShooterCharacter::StartSprint()
 {
-	// 이미 질주 중이거나, 죽었거나, GE를 지정 안 했으면 무시
-	if (!AbilitySystemComponent || !SprintEffect || SprintEffectHandle.IsValid() || IsDead())
+	// 이미 질주 중이거나, 조준 중이거나, 죽었거나, GE를 지정 안 했으면 무시
+	if (!AbilitySystemComponent || !SprintEffect || SprintEffectHandle.IsValid() || IsAiming() || IsDead())
 	{
 		return;
 	}
@@ -248,6 +262,33 @@ void AShooterCharacter::StopSprint()
 	{
 		AbilitySystemComponent->RemoveActiveGameplayEffect(SprintEffectHandle);
 		SprintEffectHandle.Invalidate();
+	}
+}
+
+void AShooterCharacter::StartAim()
+{
+	if (!AbilitySystemComponent || !AimEffect || AimEffectHandle.IsValid() || IsDead())
+	{
+		return;
+	}
+
+	// 조준과 질주는 동시에 하지 않는다 → 조준이 우선 (질주 중이었으면 끈다)
+	StopSprint();
+
+	// 질주와 같은 방식: GE의 MoveSpeed 배율로 느려지고, Granted Tags로 State.Aiming이 붙는다
+	const FGameplayEffectSpecHandle Spec = AbilitySystemComponent->MakeOutgoingSpec(AimEffect, 1.f, AbilitySystemComponent->MakeEffectContext());
+	if (Spec.IsValid())
+	{
+		AimEffectHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+	}
+}
+
+void AShooterCharacter::StopAim()
+{
+	if (AbilitySystemComponent && AimEffectHandle.IsValid())
+	{
+		AbilitySystemComponent->RemoveActiveGameplayEffect(AimEffectHandle);
+		AimEffectHandle.Invalidate();
 	}
 }
 
@@ -319,6 +360,10 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		// 질주: 누른 순간 시작, 뗀 순간 끝 (점프와 같은 Started/Completed 패턴)
 		EIC->BindAction(SprintAction, ETriggerEvent::Started, this, &AShooterCharacter::StartSprint);
 		EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &AShooterCharacter::StopSprint);
+
+		// 조준: 누르고 있는 동안만 (질주와 같은 패턴)
+		EIC->BindAction(AimAction, ETriggerEvent::Started, this, &AShooterCharacter::StartAim);
+		EIC->BindAction(AimAction, ETriggerEvent::Completed, this, &AShooterCharacter::StopAim);
 	}
 }
 
@@ -377,6 +422,10 @@ void AShooterCharacter::TryFire()
 		// 등록된 어빌리티 중 이 클래스를 찾아 실행 시도.
 		// 쿨타임 중이거나 실행 조건이 안 맞으면 GAS가 알아서 거부한다 (반환값 false)
 		const bool bFired = AbilitySystemComponent->TryActivateAbilityByClass(FireAbility);
+		if (bFired)
+		{
+			LastFireTime = GetWorld()->GetTimeSeconds();
+		}
 
 		// 못 쐈는데 탄창이 비어 있으면 자동 재장전 (빈 총으로 클릭 = 재장전, 대부분의 슈터와 같은 동작)
 		// 이미 재장전 중이면 GAS가 중복 실행을 거부하므로, 연사 버튼을 누르고 있어도 한 번만 시작된다

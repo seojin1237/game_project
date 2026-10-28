@@ -40,4 +40,18 @@ protected:
 	// Category          : "Shooter|Aim" 하위 그룹으로 표시
 	UPROPERTY(BlueprintReadOnly, Category = "Shooter|Aim")
 	float AimPitch = 0.f;
+
+	// true면 상체를 "총을 겨눈 자세"(MF_Rifle_Idle_ADS)로 바꾼다. 조준 중이거나 방금 쐈을 때
+	// → 달리면서 쏴도 상체는 겨눈 채로, 다리만 달리기 (ABP의 Blend Poses by bool에 연결)
+	// BlueprintReadOnly : ABP 그래프에서 읽기만 가능 (값은 C++이 계산)
+	// Category          : "Shooter|Aim" 하위 그룹으로 표시
+	UPROPERTY(BlueprintReadOnly, Category = "Shooter|Aim")
+	bool bUpperBodyAim = false;
+
+	// 마지막 사격 후 몇 초 동안 겨눈 자세를 유지할지. 짧으면 연사 사이사이에 팔이 내려갔다 올라온다
+	// EditDefaultsOnly : ABP의 Class Defaults에서 조절 (연출 수치라 BP에서 튜닝)
+	// Category         : "Shooter|Aim" 하위 그룹으로 표시
+	// meta=(ClampMin)  : 음수 입력 방지
+	UPROPERTY(EditDefaultsOnly, Category = "Shooter|Aim", meta = (ClampMin = "0"))
+	float FireAimHoldTime = 0.5f;
 };

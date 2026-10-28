@@ -8,4 +8,5 @@ namespace ShooterTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_InAir, "State.InAir", "공중에 떠 있음 (점프/낙하)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Equipping, "State.Equipping", "무기 교체 애니메이션 중");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Reloading, "State.Reloading", "재장전 중 (GA_Reload가 부여)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Aiming, "State.Aiming", "조준 중 (GE_Aim이 부여)");
 }

@@ -36,6 +36,12 @@ public:
 	// 지금 들고 있는 무기 (없으면 nullptr). 사격 어빌리티가 무기 데이터를 읽을 때 사용
 	AShooterWeapon* GetCurrentWeapon() const { return CurrentWeapon; }
 
+	// 조준 중인지 (조준 GE가 걸려 있으면 true). 애니메이션이 상체를 겨눈 자세로 바꿀 때 사용
+	bool IsAiming() const { return AimEffectHandle.IsValid(); }
+
+	// 마지막으로 실제 발사에 성공한 시각 (게임 시작 후 초). 애니메이션이 "방금 쐈는지" 판단할 때 사용
+	float GetLastFireTime() const { return LastFireTime; }
+
 	// 새 무기를 스폰해서 손에 들기. 들고 있던 무기는 삭제 (나중에 무기 줍기/교체에 사용)
 	// BlueprintCallable : BP에서 호출 가능한 노드로 노출
 	// Category          : "Weapon" 그룹으로 표시
@@ -52,6 +58,9 @@ protected:
 	// 모든 컴포넌트가 만들어진 직후 호출 → 무기 부착 지점을 메시의 손 소켓에 붙인다
 	// (생성자에서는 BP에서 바꾼 소켓 이름이 아직 반영 전이라 여기서 한다)
 	virtual void PostInitializeComponents() override;
+
+	// 매 프레임 호출 (Unity의 Update) → 조준 카메라 확대/복귀를 부드럽게
+	virtual void Tick(float DeltaSeconds) override;
 
 	// 캐릭터가 사라질 때 들고 있던 무기도 같이 정리
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -81,6 +90,10 @@ protected:
 	// 질주 키(Shift)를 누른 순간 / 뗀 순간
 	void StartSprint();
 	void StopSprint();
+
+	// 조준 키(우클릭)를 누른 순간 / 뗀 순간
+	void StartAim();
+	void StopAim();
 
 	// 무기 교체 애니메이션이 끝났을 때 (타이머로 호출) → State.Equipping 태그 제거
 	void EndEquip();
@@ -156,6 +169,28 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<UCameraComponent> FollowCamera;
 
+	// 조준할 때 카메라 거리(cm). 평소 거리는 CameraBoom의 Target Arm Length
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능
+	// Category         : "Camera|Aim" 하위 그룹으로 표시
+	// meta=(ClampMin)  : 음수 입력 방지
+	UPROPERTY(EditDefaultsOnly, Category = "Camera|Aim", meta = (ClampMin = "0"))
+	float AimArmLength = 150.f;
+
+	// 조준할 때 시야각(도). 작을수록 확대된다. 평소 값은 FollowCamera의 Field Of View (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, Category = "Camera|Aim", meta = (ClampMin = "5", ClampMax = "170"))
+	float AimFOV = 65.f;
+
+	// 확대/복귀 속도. 클수록 빨리 따라간다 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, Category = "Camera|Aim", meta = (ClampMin = "0"))
+	float AimInterpSpeed = 12.f;
+
+	// 게임 시작 시 기억해 둔 평소 카메라 거리 / 시야각 (조준을 풀면 여기로 돌아온다)
+	float DefaultArmLength = 0.f;
+	float DefaultFOV = 90.f;
+
+	// 마지막 발사 시각. 시작값을 아주 과거로 둬서 게임 시작 직후 "방금 쐈음"으로 판단되지 않게
+	float LastFireTime = -1000.f;
+
 	// ===== 입력 (BP에서 IA_ / IMC_ 에셋 지정) =====
 
 	// 키 ↔ Input Action 연결표
@@ -192,6 +227,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> ReloadAction;
 
+	// 조준 (마우스 오른쪽, bool). 누르고 있는 동안만 조준
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> AimAction;
+
 	// ===== GAS (ASC/AttributeSet은 부모에 있음) =====
 
 	// 사격 어빌리티 클래스 (BP에서 GA_Fire 지정). 게임 시작 시 ASC에 등록(Grant)된다
@@ -216,6 +255,15 @@ protected:
 
 	// 적용 중인 질주 GE의 영수증. Shift를 떼면 이걸로 정확히 그 GE만 제거한다
 	FActiveGameplayEffectHandle SprintEffectHandle;
+
+	// 조준 GE (BP에서 GE_Aim 지정). 질주 GE와 같은 방식: Infinite + MoveSpeed 배율(느려짐) + Granted Tags에 State.Aiming
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "GAS|Effects" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Effects")
+	TSubclassOf<UGameplayEffect> AimEffect;
+
+	// 적용 중인 조준 GE의 영수증 (유효하면 조준 중)
+	FActiveGameplayEffectHandle AimEffectHandle;
 
 	// [테스트용] DebugDamage에서 적용할 GameplayEffect 클래스 (BP에서 GE_Damage 지정)
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능 (레벨에 배치된 개별 인스턴스에선 수정 불가)
