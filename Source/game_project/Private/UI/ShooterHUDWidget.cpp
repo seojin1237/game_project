@@ -1,4 +1,4 @@
-#include "UI/ShooterHUDWidget.h"
+﻿#include "UI/ShooterHUDWidget.h"
 #include "AbilitySystemComponent.h"
 #include "GAS/ShooterAttributeSet.h"
 #include "GAS/ShooterGameplayTags.h"
@@ -181,4 +181,16 @@ void UShooterHUDWidget::RefreshAmmo()
 	const float Ammo = ASC->GetNumericAttribute(UShooterAttributeSet::GetAmmoAttribute());
 	const float MaxAmmo = ASC->GetNumericAttribute(UShooterAttributeSet::GetMaxAmmoAttribute());
 	AmmoText->SetText(FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Ammo, MaxAmmo)));
+
+	// 탄약이 5발 이하면 빨간색으로 경고, 아니면 흰색
+	// SetColorAndOpacity: 글자색 변경 (Unity의 text.color = Color.red 와 같음)
+	// 탄약이 바뀔 때마다 이 함수가 불리므로 재장전으로 다시 채워지면 자동으로 흰색으로 돌아온다
+	if (Ammo <= 5.f)
+	{
+		AmmoText->SetColorAndOpacity(FLinearColor::Red);
+	}
+	else
+	{
+		AmmoText->SetColorAndOpacity(FLinearColor::White);
+	}
 }
