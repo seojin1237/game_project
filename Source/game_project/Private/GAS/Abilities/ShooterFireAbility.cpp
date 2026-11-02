@@ -134,6 +134,22 @@ void UShooterFireAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 		}
 	}
 
-	// 6) 반드시 종료 알림. 안 하면 "실행 중"으로 남아 다음 클릭이 거부된다
+	// 6) 반동: 시선을 위로(+ 좌우 무작위로) 밀어 올린다. 수치는 무기 BP의 Weapon|Recoil에서 조절
+	//    트레이스가 끝난 뒤에 올리므로 이번 총알은 조준한 곳으로 가고, 다음 총알부터 영향을 받는다
+	//    ControlRotation: 플레이어가 보는 방향. 마우스로 돌리는 값과 같아서 올라간 만큼 마우스로 눌러 제어할 수 있다
+	//    (Add...Input 대신 Set을 쓰는 이유: 입력 스케일 설정의 영향 없이 각도(도)를 그대로 적용하려고)
+	if (ShooterCharacter && Weapon)
+	{
+		if (AController* Controller = ShooterCharacter->GetController())
+		{
+			FRotator NewRotation = Controller->GetControlRotation();
+			NewRotation.Pitch += Weapon->GetRecoilPitch();
+			// FRandRange: 범위 안의 무작위 실수 (Unity의 Random.Range)
+			NewRotation.Yaw += FMath::FRandRange(-Weapon->GetRecoilYaw(), Weapon->GetRecoilYaw());
+			Controller->SetControlRotation(NewRotation);
+		}
+	}
+
+	// 7) 반드시 종료 알림. 안 하면 "실행 중"으로 남아 다음 클릭이 거부된다
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }

@@ -44,6 +44,8 @@ public:
 	UAnimMontage* GetFireMontage() const { return FireMontage; }
 	UAnimMontage* GetEquipMontage() const { return EquipMontage; }
 	UAnimMontage* GetReloadMontage() const { return ReloadMontage; }
+	float GetRecoilPitch() const { return RecoilPitch; }
+	float GetRecoilYaw() const { return RecoilYaw; }
 
 	// 총구 화염 이펙트를 총구 위치에 1번 재생 (MuzzleFlashEffect가 비어 있으면 아무것도 안 함)
 	void PlayMuzzleFlash() const;
@@ -97,6 +99,17 @@ protected:
 	// meta=(ClampMin)  : 1 미만 입력 방지 (0이면 영원히 못 쏨)
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Fire", meta = (ClampMin = "1"))
 	int32 MagazineSize = 30;
+
+	// 한 발 쏠 때마다 조준점이 위로 올라가는 각도 (도). 클수록 연사 제어가 어렵다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능 → 무기 BP마다 다르게 조절
+	// Category         : "Weapon|Recoil" 하위 그룹으로 표시
+	// meta=(ClampMin)  : 0 미만 입력 방지 (음수면 조준점이 아래로 내려감)
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Recoil", meta = (ClampMin = "0"))
+	float RecoilPitch = 0.4f;
+
+	// 한 발 쏠 때마다 조준점이 좌우로 흔들리는 최대 각도 (도). -값 ~ +값 사이에서 무작위로 정해진다 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Recoil", meta = (ClampMin = "0"))
+	float RecoilYaw = 0.15f;
 
 	// 쏠 때마다 캐릭터가 재생할 사격 애니메이션 (BP에서 AM_Rifle_Fire 등 지정, 비우면 재생 안 함)
 	// Montage = 코드에서 원하는 순간에 재생할 수 있는 애니메이션 에셋 (ABP의 Slot 노드를 통해 섞여 들어감)
