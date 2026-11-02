@@ -7,6 +7,11 @@
 #include "Game/ShooterCollision.h"
 #include "Character/ShooterCharacter.h"
 #include "Weapon/ShooterWeapon.h"
+#include "NativeGameplayTags.h"
+
+// 이 파일에서만 쓰는 태그. _STATIC 버전은 헤더에 선언하지 않고 .cpp 안에서만 정의한다
+// (태그 자체는 DefaultGameplayTags.ini에도 등록돼 있고, GC_Weapon_Fire가 이 태그에 연결돼 있다)
+UE_DEFINE_GAMEPLAY_TAG_STATIC(TAG_GameplayCue_Weapon_Fire, "GameplayCue.Weapon.Fire");
 
 UShooterFireAbility::UShooterFireAbility()
 {
@@ -52,6 +57,13 @@ void UShooterFireAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 	{
 		Weapon->PlayMuzzleFlash();
 	}
+
+	// 총소리 + 화면 흔들림 = GameplayCue(연출 전담)에 맡긴다. 실제 내용은 GC_Weapon_Fire BP에서 설정
+	// ExecuteGameplayCue: 태그에 연결된 Cue를 1번 실행 (Unity로 치면 "Fire" 이벤트만 쏘고, 소리/흔들림은 구독자가 처리)
+	// Location을 총구로 넘겨서 소리가 총에서 나게 한다
+	FGameplayCueParameters CueParams;
+	CueParams.Location = Weapon ? Weapon->GetMuzzleLocation() : Avatar->GetActorLocation();
+	GetAbilitySystemComponentFromActorInfo()->ExecuteGameplayCue(TAG_GameplayCue_Weapon_Fire, CueParams);
 
 	// 쏜 사람과 그 무기는 트레이스에서 무시
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(ShooterFire), false, Avatar);
