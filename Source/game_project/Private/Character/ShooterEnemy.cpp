@@ -4,6 +4,10 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/WidgetComponent.h"
 #include "UI/ShooterHealthBarWidget.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimSequenceBase.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "TimerManager.h"
 
 AShooterEnemy::AShooterEnemy()
 {
@@ -84,10 +88,64 @@ bool AShooterEnemy::TryAttack(const AActor* Target)
 	return AbilitySystemComponent->TryActivateAbilityByClass(AttackAbility);
 }
 
+void AShooterEnemy::StartRagdoll()
+{
+	// "Ragdoll" 충돌 설정 + PhysicsOnly: 바닥과는 물리로 부딪히지만 총알(트레이스)은 통과한다
+	GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+	// 시체가 플레이어를 밀거나 플레이어에게 밀리지 않게
+	GetMesh()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+
+	// SetSimulatePhysics: 애니메이션 대신 물리 엔진이 뼈를 움직인다 (Unity에서 Rigidbody의 isKinematic을 끄는 것과 비슷)
+	GetMesh()->SetSimulatePhysics(true);
+}
+
+void AShooterEnemy::OnHealthChanged(const FOnAttributeChangeData& Data)
+{
+	// 부모: 체력이 0 이하면 Die() 호출
+	Super::OnHealthChanged(Data);
+
+	// 죽었거나 체력이 늘어난 경우(회복 등)는 피격이 아니다
+	if (IsDead() || Data.NewValue >= Data.OldValue || HitReactAnimations.IsEmpty())
+	{
+		return;
+	}
+
+	// 재생 중이면 새로 시작하지 않는다: 연사에 맞을 때마다 처음부터 다시 틀면 첫 프레임에 멈춘 것처럼 보이기 때문
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && !AnimInstance->IsAnyMontagePlaying())
+	{
+		// PlaySlotAnimationAsDynamicMontage: Montage 에셋 없이 일반 애니메이션을 Slot에 바로 재생
+		// ABP_Unarmed에서 DefaultSlot은 상체에만 섞이므로 다리는 계속 달린다
+		AnimInstance->PlaySlotAnimationAsDynamicMontage(HitReactAnimations[FMath::RandRange(0, HitReactAnimations.Num() - 1)],
+			TEXT("DefaultSlot"), 0.05f, 0.15f);
+	}
+}
+
 void AShooterEnemy::Die()
 {
 	// 부모 클래스의 공통 사망 처리 (태그, 충돌/이동 끄기, OnDeath 연출) 먼저 실행
 	Super::Die();
+
+	// 시체가 총알을 막지 않게 메시 충돌도 끈다 (부모는 캡슐 충돌만 끈다)
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// 사망 애니메이션을 메시에 직접 재생 (Unity의 Animator.Play와 비슷)
+	// PlayAnimation: 애니메이션 BP 대신 이 애니메이션 하나만 재생한다
+	// 이 애니메이션들은 다리를 편 채 몸을 숙이는 데서 끝나므로, 끝나는 순간 래그돌로 넘겨 바닥까지 쓰러지게 한다
+	// SetTimer: 지정한 시간 뒤 함수를 1번 호출 (Unity의 Invoke("StartRagdoll", 시간)과 같음)
+	if (!DeathAnimations.IsEmpty())
+	{
+		UAnimSequenceBase* DeathAnimation = DeathAnimations[FMath::RandRange(0, DeathAnimations.Num() - 1)];
+		GetMesh()->PlayAnimation(DeathAnimation, false);
+
+		FTimerHandle RagdollTimer;
+		GetWorldTimerManager().SetTimer(RagdollTimer, this, &AShooterEnemy::StartRagdoll, DeathAnimation->GetPlayLength(), false);
+	}
+	else
+	{
+		StartRagdoll();
+	}
 
 	// 죽은 적의 체력 바는 바로 숨김 (시체가 사라질 때까지 빈 바가 떠 있지 않게)
 	if (HealthBarWidget)

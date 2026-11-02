@@ -65,7 +65,8 @@ protected:
 	virtual void PossessedBy(AController* NewController) override;
 
 	// ASC가 Health 값이 바뀔 때마다 호출해주는 함수 (BeginPlay에서 구독)
-	void OnHealthChanged(const FOnAttributeChangeData& Data);
+	// virtual이라 자식 클래스가 동작을 추가할 수 있다 (적의 피격 애니메이션 등)
+	virtual void OnHealthChanged(const FOnAttributeChangeData& Data);
 
 	// ASC가 MoveSpeed 값이 바뀔 때마다 호출 → CharacterMovement 속도에 반영
 	void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);

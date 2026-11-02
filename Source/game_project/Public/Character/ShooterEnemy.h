@@ -6,6 +6,7 @@
 
 class UGameplayAbility;
 class UWidgetComponent;
+class UAnimSequenceBase;
 
 /**
  * 적 캐릭터. AI 컨트롤러(AShooterAIController)가 조종한다.
@@ -42,8 +43,24 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|UI")
 	TObjectPtr<UWidgetComponent> HealthBarWidget;
 
-	// 부모의 사망 처리 + 일정 시간 뒤 삭제
+	// 부모의 사망 처리 + 사망 애니메이션 + 일정 시간 뒤 삭제
 	virtual void Die() override;
+
+	// 사망 애니메이션이 끝나면 호출 → 메시를 물리에 맡겨 바닥까지 쓰러지게 한다 (래그돌)
+	void StartRagdoll();
+
+	// 부모의 사망 판정 + 체력이 줄었으면 피격 애니메이션 재생
+	virtual void OnHealthChanged(const FOnAttributeChangeData& Data) override;
+
+	// 맞았을 때 상체에 재생할 애니메이션 후보. 이 중 하나를 무작위로 재생 (비우면 재생 안 함)
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "Enemy|Animation" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Enemy|Animation")
+	TArray<TObjectPtr<UAnimSequenceBase>> HitReactAnimations;
+
+	// 죽을 때 재생할 애니메이션 후보. 이 중 하나를 무작위로 재생 (비우면 재생 안 함, 지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, Category = "Enemy|Animation")
+	TArray<TObjectPtr<UAnimSequenceBase>> DeathAnimations;
 
 	// 공격 어빌리티 클래스 (BP에서 GA_EnemyAttack 지정). 빙의 시 ASC에 등록(Grant)된다
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
