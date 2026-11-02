@@ -61,9 +61,11 @@ void UShooterFireAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 	// 총소리 + 화면 흔들림 = GameplayCue(연출 전담)에 맡긴다. 실제 내용은 GC_Weapon_Fire BP에서 설정
 	// ExecuteGameplayCue: 태그에 연결된 Cue를 1번 실행 (Unity로 치면 "Fire" 이벤트만 쏘고, 소리/흔들림은 구독자가 처리)
 	// Location을 총구로 넘겨서 소리가 총에서 나게 한다
+	// 무기에 전용 태그가 있으면 그 Cue를, 없으면 기본 Cue를 실행한다 (어떤 소리인지는 무기 BP가 정함)
+	const FGameplayTag FireCueTag = (Weapon && Weapon->GetFireCueTag().IsValid()) ? Weapon->GetFireCueTag() : TAG_GameplayCue_Weapon_Fire.GetTag();
 	FGameplayCueParameters CueParams;
 	CueParams.Location = Weapon ? Weapon->GetMuzzleLocation() : Avatar->GetActorLocation();
-	GetAbilitySystemComponentFromActorInfo()->ExecuteGameplayCue(TAG_GameplayCue_Weapon_Fire, CueParams);
+	GetAbilitySystemComponentFromActorInfo()->ExecuteGameplayCue(FireCueTag, CueParams);
 
 	// 쏜 사람과 그 무기는 트레이스에서 무시
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(ShooterFire), false, Avatar);

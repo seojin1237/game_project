@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "GameplayTagContainer.h"
 #include "ShooterWeapon.generated.h"
 
 class UStaticMeshComponent;
@@ -46,6 +47,7 @@ public:
 	UAnimMontage* GetReloadMontage() const { return ReloadMontage; }
 	float GetRecoilPitch() const { return RecoilPitch; }
 	float GetRecoilYaw() const { return RecoilYaw; }
+	FGameplayTag GetFireCueTag() const { return FireCueTag; }
 
 	// 총구 화염 이펙트를 총구 위치에 1번 재생 (MuzzleFlashEffect가 비어 있으면 아무것도 안 함)
 	void PlayMuzzleFlash() const;
@@ -138,6 +140,14 @@ protected:
 	// Category         : "Weapon|Effects" 하위 그룹으로 표시
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Effects")
 	TObjectPtr<UNiagaraSystem> MuzzleFlashEffect;
+
+	// 쏠 때 실행할 GameplayCue 태그 = 이 무기의 총소리/화면 흔들림 (예: GameplayCue.Weapon.Fire.Pistol)
+	// 비워 두면 기본 연출(GameplayCue.Weapon.Fire = GC_Weapon_Fire)을 쓴다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "Weapon|Effects" 하위 그룹으로 표시
+	// meta=(Categories): 태그 선택창에 이 태그 아래 항목만 보여준다 (잘못된 태그 선택 방지)
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Effects", meta = (Categories = "GameplayCue.Weapon.Fire"))
+	FGameplayTag FireCueTag;
 
 	// 이 무기를 들고 있는 동안 주인에게 걸리는 스탯 GE (Infinite로 만들 것)
 	// 예: 권총 = AttackPower ×1.5 / 기관총 = FireInterval ×0.5, AttackPower ×0.7
