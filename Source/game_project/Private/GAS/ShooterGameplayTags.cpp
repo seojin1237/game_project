@@ -9,4 +9,5 @@ namespace ShooterTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Equipping, "State.Equipping", "무기 교체 애니메이션 중");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Reloading, "State.Reloading", "재장전 중 (GA_Reload가 부여)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Aiming, "State.Aiming", "조준 중 (GE_Aim이 부여)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Dashing, "State.Dashing", "대시 중 (GA_Dash가 부여)");
 }

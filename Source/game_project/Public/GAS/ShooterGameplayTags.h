@@ -22,4 +22,6 @@ namespace ShooterTags
 	GAME_PROJECT_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Reloading);
 	// 조준 중. 조준 GE(GE_Aim)가 적용돼 있는 동안 자동으로 붙는다 (GE의 Granted Tags)
 	GAME_PROJECT_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Aiming);
+	// 대시 중. 대시 어빌리티(GA_Dash)가 실행되는 동안 자동으로 붙는다 (Activation Owned Tags)
+	GAME_PROJECT_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Dashing);
 }

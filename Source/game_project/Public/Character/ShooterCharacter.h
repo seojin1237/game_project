@@ -90,6 +90,9 @@ protected:
 	// 재장전 키(R)를 누른 순간 → 재장전 어빌리티 실행 시도
 	void TryReload();
 
+	// 대시 키(C)를 누른 순간 → 대시 어빌리티 실행 시도
+	void TryDash();
+
 	// 질주 키(Shift)를 누른 순간 / 뗀 순간
 	void StartSprint();
 	void StopSprint();
@@ -244,6 +247,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> AimAction;
 
+	// 대시 (C, bool)
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> DashAction;
+
 	// ===== GAS (ASC/AttributeSet은 부모에 있음) =====
 
 	// 사격 어빌리티 클래스 (BP에서 GA_Fire 지정). 게임 시작 시 ASC에 등록(Grant)된다
@@ -258,6 +265,10 @@ protected:
 
 	// 등록된 재장전 어빌리티의 "번호표". 무기를 바꿀 때 이걸로 진행 중인 재장전을 취소한다
 	FGameplayAbilitySpecHandle ReloadAbilityHandle;
+
+	// 대시 어빌리티 클래스 (BP에서 GA_Dash 지정). 게임 시작 시 ASC에 등록된다 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities")
+	TSubclassOf<UGameplayAbility> DashAbility;
 
 	// 질주 GE (BP에서 GE_Sprint 지정). Infinite로 만들고 MoveSpeed 배율 + Granted Tags에 State.Sprinting
 	// 속도 배율을 C++에 하드코딩하지 않고 GE에 두면, 이동속도 업그레이드와도 자연스럽게 곱해지고 BP에서 조절 가능

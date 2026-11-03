@@ -157,6 +157,10 @@ void AShooterCharacter::PossessedBy(AController* NewController)
 		// GiveAbility의 반환값(번호표)을 저장 → 나중에 이 어빌리티만 골라서 취소할 수 있다
 		ReloadAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(ReloadAbility, 1));
 	}
+	if (AbilitySystemComponent && DashAbility)
+	{
+		AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(DashAbility, 1));
+	}
 
 	// 첫 번째 슬롯 무기 장착. BeginPlay가 아니라 여기서 하는 이유:
 	// 무기 스탯 GE를 걸려면 ASC가 초기화(부모 PossessedBy의 InitAbilityActorInfo)된 뒤여야 하는데,
@@ -358,6 +362,9 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		// 재장전: 누른 순간 1번
 		EIC->BindAction(ReloadAction, ETriggerEvent::Started, this, &AShooterCharacter::TryReload);
 
+		// 대시: 누른 순간 1번
+		EIC->BindAction(DashAction, ETriggerEvent::Started, this, &AShooterCharacter::TryDash);
+
 		// 질주: 누른 순간 시작, 뗀 순간 끝 (점프와 같은 Started/Completed 패턴)
 		EIC->BindAction(SprintAction, ETriggerEvent::Started, this, &AShooterCharacter::StartSprint);
 		EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &AShooterCharacter::StopSprint);
@@ -444,6 +451,15 @@ void AShooterCharacter::TryReload()
 	{
 		// 탄창이 가득이거나 교체 중이면 GAS가 거부한다 (UShooterReloadAbility::CanActivateAbility, Blocked Tags)
 		AbilitySystemComponent->TryActivateAbilityByClass(ReloadAbility);
+	}
+}
+
+void AShooterCharacter::TryDash()
+{
+	if (AbilitySystemComponent && DashAbility && !IsDead())
+	{
+		// 쿨타임 중이거나 공중이면 GAS가 거부한다 (GE_Cooldown_Dash, Blocked Tags)
+		AbilitySystemComponent->TryActivateAbilityByClass(DashAbility);
 	}
 }
 
