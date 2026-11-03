@@ -2,6 +2,7 @@
 #include "AbilitySystemComponent.h"
 #include "GAS/ShooterAttributeSet.h"
 #include "GAS/ShooterGameplayTags.h"
+#include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Game/ShooterGameMode.h"
@@ -18,6 +19,25 @@ void UShooterHUDWidget::NativeConstruct()
 
 		// 구독은 앞으로의 변화만 알려주므로 현재 값으로 한 번 표시
 		HandleWaveStateChanged(GameMode->GetCurrentWave(), GameMode->GetEnemiesRemaining());
+	}
+
+	// 맞기 전에는 붉은 화면이 보이지 않아야 한다
+	if (DamageOverlay)
+	{
+		DamageOverlay->SetRenderOpacity(0.f);
+	}
+}
+
+void UShooterHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	if (DamageOverlay && CurrentDamageFlash > 0.f)
+	{
+		// FInterpConstantTo: 일정한 속도로 목표까지 이동 (Unity의 Mathf.MoveTowards). 속도 = 진하기 / 시간
+		// SetRenderOpacity: 위젯 전체의 투명도. M_UI_DamageVignette가 이 값을 VertexColor의 알파로 받는다
+		CurrentDamageFlash = FMath::FInterpConstantTo(CurrentDamageFlash, 0.f, InDeltaTime, DamageFlashOpacity / DamageFlashDuration);
+		DamageOverlay->SetRenderOpacity(CurrentDamageFlash);
 	}
 }
 
@@ -115,6 +135,13 @@ void UShooterHUDWidget::HandleHealthAttributeChanged(const FOnAttributeChangeDat
 {
 	// Health와 MaxHealth 중 무엇이 바뀌었든 두 값을 다시 읽어서 갱신하면 된다 (단순하고 실수가 없음)
 	RefreshHealth();
+
+	// 이 함수는 MaxHealth 변화나 회복 때도 불리므로, Health가 줄었을 때만 붉은 화면을 켠다
+	if (DamageOverlay && Data.Attribute == UShooterAttributeSet::GetHealthAttribute() && Data.NewValue < Data.OldValue)
+	{
+		CurrentDamageFlash = DamageFlashOpacity;
+		DamageOverlay->SetRenderOpacity(CurrentDamageFlash);
+	}
 }
 
 void UShooterHUDWidget::HandleDeadTagChanged(const FGameplayTag Tag, int32 NewCount)

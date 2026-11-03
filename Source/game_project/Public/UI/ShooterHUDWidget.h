@@ -6,6 +6,7 @@
 #include "ShooterHUDWidget.generated.h"
 
 class UAbilitySystemComponent;
+class UImage;
 class UProgressBar;
 class UTextBlock;
 struct FOnAttributeChangeData;
@@ -38,6 +39,9 @@ protected:
 
 	// 위젯이 화면에서 제거될 때 호출 (Unity의 OnDestroy와 비슷) → 구독 해제
 	virtual void NativeDestruct() override;
+
+	// 매 프레임 호출 (Unity의 Update) → 피격 때 붉어진 화면을 서서히 되돌린다
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 	// GameMode가 웨이브 상태 변화를 알려줄 때 호출
 	// UFUNCTION() : 다이내믹 델리게이트(AddDynamic)에 연결하려면 리플렉션에 등록된 함수여야 해서 필요
@@ -94,7 +98,28 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> AmmoText;
 
+	// 피격 시 화면 가장자리를 붉게 만드는 전체 화면 이미지. 없어도 된다
+	// BindWidgetOptional : 위와 동일 (선택)
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UImage> DamageOverlay;
+
+	// 맞은 순간 붉은 화면의 진하기 (0 = 안 보임, 1 = 가장 진함)
+	// EditDefaultsOnly : WBP_HUD의 Class Defaults에서만 수정 가능 (연출 수치라 BP에서 튜닝)
+	// Category         : "HUD|Damage" 하위 그룹으로 표시
+	// meta=(ClampMin, ClampMax) : 0 ~ 1 범위로 제한
+	UPROPERTY(EditDefaultsOnly, Category = "HUD|Damage", meta = (ClampMin = "0", ClampMax = "1"))
+	float DamageFlashOpacity = 0.8f;
+
+	// 붉은 화면이 완전히 사라지는 데 걸리는 시간 (초)
+	// EditDefaultsOnly, Category : 위와 동일
+	// meta=(ClampMin)            : 0으로 나누기 방지
+	UPROPERTY(EditDefaultsOnly, Category = "HUD|Damage", meta = (ClampMin = "0.05"))
+	float DamageFlashDuration = 0.4f;
+
 private:
+	// 지금 붉은 화면의 진하기. 맞으면 DamageFlashOpacity가 되고 매 프레임 0을 향해 줄어든다
+	float CurrentDamageFlash = 0.f;
+
 	// 구독 중인 ASC. Weak 포인터 = 대상이 삭제되면 자동으로 nullptr이 되는 포인터
 	// (캐릭터가 먼저 사라져도 위젯이 "죽은 포인터"를 잡고 있지 않도록. C#의 WeakReference와 비슷)
 	TWeakObjectPtr<UAbilitySystemComponent> BoundASC;
