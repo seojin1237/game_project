@@ -2,6 +2,7 @@
 #include "Character/ShooterCharacter.h"
 #include "Weapon/ShooterWeapon.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "AbilitySystemComponent.h"
 #include "GAS/ShooterGameplayTags.h"
 
@@ -12,6 +13,67 @@ void UShooterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	// TryGetPawnOwner: 이 애니메이션을 쓰는 메시의 주인 Pawn (에디터 미리보기 창에서는 없을 수 있음)
 	const AShooterCharacter* Character = Cast<AShooterCharacter>(TryGetPawnOwner());
 	const AShooterWeapon* Weapon = Character ? Character->GetCurrentWeapon() : nullptr;
+
+	// 이동 값 계산 (ABP의 Blend Space와 상태 전환이 읽는다)
+	if (const UCharacterMovementComponent* Movement = Character ? Character->GetCharacterMovement() : nullptr)
+	{
+		const FVector Velocity = Movement->Velocity;
+		// GetCurrentAcceleration: 입력으로 가하는 가속도 = 플레이어가 가려는 방향
+		const FVector Acceleration = Movement->GetCurrentAcceleration();
+
+		// Size2D: Z를 뺀 수평 길이 (Unity의 new Vector2(v.x, v.z).magnitude)
+		MoveSpeed = Velocity.Size2D();
+		VerticalSpeed = Velocity.Z;
+		bShouldMove = MoveSpeed > 0.01f && !Acceleration.IsZero();
+		bIsFalling = Movement->IsFalling();
+
+		// 방향을 WASD 입력으로 구하는 이유: 몸이 항상 카메라를 보므로 입력이 곧 몸 기준 방향이다
+		// 속도나 가속도로 구하면 마우스를 돌릴 때 값이 흔들려 대각선 애니메이션이 떨린다
+		// Atan2(옆, 앞): 앞 = 0도, 오른쪽 = 90도, 왼쪽 = -90도, 뒤 = 180도 (Unity의 Mathf.Atan2와 같음)
+		const FVector2D MoveInput = Character->GetLastMoveInput();
+		MoveDirection = FMath::RadiansToDegrees(FMath::Atan2(MoveInput.X, MoveInput.Y));
+
+		// 제자리 회전: 몸(캡슐)은 카메라를 따라 바로 돌므로, 서 있을 때만 메시를 그만큼 반대로 돌려 발을 제자리에 둔다
+		// FindDeltaAngleDegrees: 두 각도의 차이를 -180 ~ 180도로 계산 (359도 → 1도를 2도 차이로 처리, Unity의 Mathf.DeltaAngle)
+		const float ActorYaw = Character->GetActorRotation().Yaw;
+		const float YawDelta = bHasLastActorYaw ? FMath::FindDeltaAngleDegrees(LastActorYaw, ActorYaw) : 0.f;
+		LastActorYaw = ActorYaw;
+		bHasLastActorYaw = true;
+
+		if (MoveSpeed > 1.f || bIsFalling)
+		{
+			// 움직이면 이동 애니메이션이 몸 기준이어야 하므로 하체를 다시 정면으로 돌린다
+			RootYawOffset = FMath::FInterpTo(RootYawOffset, 0.f, DeltaSeconds, RootYawReturnSpeed);
+			TurnTimeLeft = 0.f;
+			TurnIndex = 0;
+		}
+		else
+		{
+			RootYawOffset -= YawDelta;
+
+			if (TurnTimeLeft > 0.f)
+			{
+				// 도는 중: 발을 옮기는 동안 하체를 정면으로 돌린다
+				// FInterpConstantTo: 일정한 속도로 목표까지 이동 (Unity의 Mathf.MoveTowards)
+				RootYawOffset = FMath::FInterpConstantTo(RootYawOffset, 0.f, DeltaSeconds, TurnYawSpeed);
+				TurnTimeLeft -= DeltaSeconds;
+				if (TurnTimeLeft <= 0.f)
+				{
+					TurnIndex = 0;
+				}
+			}
+			else if (FMath::Abs(RootYawOffset) > TurnStartAngle)
+			{
+				// 각도가 커졌으니 돌기 시작. 오프셋이 음수 = 몸이 오른쪽으로 돌았다 = 발도 오른쪽으로 옮긴다
+				TurnIndex = RootYawOffset < 0.f ? 2 : 1;
+				TurnTimeLeft = TurnDuration;
+				TurnYawSpeed = FMath::Abs(RootYawOffset) / TurnDuration;
+			}
+
+			RootYawOffset = FMath::Clamp(RootYawOffset, -MaxRootYawOffset, MaxRootYawOffset);
+		}
+		SpineYawCorrection = FRotator(0.f, -RootYawOffset / 3.f, 0.f);
+	}
 
 	// 무기를 들고 살아 있을 때만 왼손을 총에 붙인다
 	// 단, 재장전 중에는 왼손이 탄창을 갈아 끼워야 하므로 IK를 풀어서 애니메이션의 손 움직임을 그대로 쓴다

@@ -372,6 +372,7 @@ void AShooterCharacter::Move(const FInputActionValue& Value)
 {
 	// WASD → (X: 좌우, Y: 앞뒤)
 	const FVector2D Axis = Value.Get<FVector2D>();
+	LastMoveInput = Axis;
 
 	if (Controller)
 	{

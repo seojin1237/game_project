@@ -42,6 +42,9 @@ public:
 	// 마지막으로 실제 발사에 성공한 시각 (게임 시작 후 초). 애니메이션이 "방금 쐈는지" 판단할 때 사용
 	float GetLastFireTime() const { return LastFireTime; }
 
+	// 마지막 이동 입력 (X: 좌우, Y: 앞뒤). 애니메이션의 이동 방향 계산에 사용
+	FVector2D GetLastMoveInput() const { return LastMoveInput; }
+
 	// 새 무기를 스폰해서 손에 들기. 들고 있던 무기는 삭제 (나중에 무기 줍기/교체에 사용)
 	// BlueprintCallable : BP에서 호출 가능한 노드로 노출
 	// Category          : "Weapon" 그룹으로 표시
@@ -197,6 +200,9 @@ protected:
 
 	// 마지막 발사 시각. 시작값을 아주 과거로 둬서 게임 시작 직후 "방금 쐈음"으로 판단되지 않게
 	float LastFireTime = -1000.f;
+
+	// 마지막 이동 입력 (Move 함수에서 저장)
+	FVector2D LastMoveInput = FVector2D::ZeroVector;
 
 	// ===== 입력 (BP에서 IA_ / IMC_ 에셋 지정) =====
 
