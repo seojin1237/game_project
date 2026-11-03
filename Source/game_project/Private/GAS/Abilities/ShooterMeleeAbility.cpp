@@ -2,6 +2,7 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Character/ShooterCharacterBase.h"
+#include "GAS/ShooterGameplayTags.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "DrawDebugHelpers.h"
@@ -111,6 +112,14 @@ void UShooterMeleeAbility::PerformAttack()
 		// 대상의 ASC를 찾아서 데미지 Effect 적용 (사격 어빌리티와 같은 방식)
 		if (UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Target))
 		{
+			// 무적이면 GE를 아예 적용하지 않는다 → 데미지뿐 아니라 피격 이펙트(Cue)도 나오지 않는다
+			// shortcut: 플레이어에게 데미지를 주는 경로가 근접 공격뿐이라 여기서만 검사한다. 원거리 적을 만들면 사격 어빌리티에도 추가할 것
+			if (TargetASC->HasMatchingGameplayTag(ShooterTags::State_Invincible))
+			{
+				UE_LOG(LogTemp, Log, TEXT("[GAS] %s 무적 상태라 공격 무시"), *Target->GetName());
+				continue;
+			}
+
 			FGameplayEffectSpecHandle Spec = MakeOutgoingGameplayEffectSpec(DamageEffect, GetAbilityLevel());
 			if (Spec.IsValid())
 			{

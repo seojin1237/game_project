@@ -10,7 +10,7 @@
  *
  * BP(GA_Dash)에서 지정할 것:
  *  - Cooldown Gameplay Effect Class : GE_Cooldown_Dash (쿨타임 시간은 이 GE에서 조절)
- *  - Activation Owned Tags          : State.Dashing (대시하는 동안 붙는 태그 → GA_Fire가 이 태그로 막힌다)
+ *  - Activation Owned Tags          : State.Dashing (대시하는 동안 붙는 태그 → GA_Fire가 이 태그로 막힌다), State.Invincible (대시 중 무적)
  *  - Activation Blocked Tags        : State.Dead, State.InAir (죽은 뒤와 공중에서는 대시 불가)
  */
 UCLASS()

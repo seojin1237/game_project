@@ -24,4 +24,6 @@ namespace ShooterTags
 	GAME_PROJECT_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Aiming);
 	// 대시 중. 대시 어빌리티(GA_Dash)가 실행되는 동안 자동으로 붙는다 (Activation Owned Tags)
 	GAME_PROJECT_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Dashing);
+	// 무적. 이 태그가 있는 대상에게는 공격이 들어가지 않는다 (GA_Dash의 Activation Owned Tags로 대시 동안 붙는다)
+	GAME_PROJECT_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Invincible);
 }
