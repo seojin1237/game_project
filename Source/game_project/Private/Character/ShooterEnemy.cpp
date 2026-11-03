@@ -127,6 +127,9 @@ void AShooterEnemy::Die()
 	// 부모 클래스의 공통 사망 처리 (태그, 충돌/이동 끄기, OnDeath 연출) 먼저 실행
 	Super::Die();
 
+	// 휘두르는 도중 죽으면 공격을 취소한다 (안 그러면 죽은 뒤에 데미지가 들어갈 수 있다)
+	AbilitySystemComponent->CancelAllAbilities();
+
 	// 시체가 총알을 막지 않게 메시 충돌도 끈다 (부모는 캡슐 충돌만 끈다)
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 

@@ -30,6 +30,18 @@ protected:
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		const FGameplayEventData* TriggerEventData) override;
 
+	// 앞쪽을 쓸어서 맞은 상대에게 데미지 적용 (실제 판정)
+	void PerformAttack();
+
+	// 태스크 이벤트로 불리는 함수들. 지정자 없는 UFUNCTION(): AddDynamic으로 연결하려면 리플렉션에 등록돼야 한다
+	// HitDelay가 지나 판정할 시간이 됨
+	UFUNCTION()
+	void OnHitTime();
+
+	// 몽타주가 끝나거나 끊김 → 어빌리티 종료
+	UFUNCTION()
+	void OnAttackFinished();
+
 	// 맞은 대상에게 적용할 데미지 Effect (BP에서 GE_Damage 지정)
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
 	// Category         : "Melee" 그룹으로 표시
@@ -47,12 +59,19 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Melee", meta = (ClampMin = "1"))
 	float AttackRadius = 60.f;
 
-	// [선택] 공격 애니메이션 몽타주. 비워두면 애니메이션 없이 판정만 한다
-	// → 나중에 캐릭터 에셋을 가져오면 여기에 몽타주만 지정하면 된다 (코드 수정 불필요)
+	// [선택] 공격 애니메이션 몽타주. 비워두면 애니메이션 없이 바로 판정한다
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
 	// Category         : "Melee|Animation" 하위 그룹으로 표시
 	UPROPERTY(EditDefaultsOnly, Category = "Melee|Animation")
 	TObjectPtr<UAnimMontage> AttackMontage;
+
+	// 몽타주 시작 후 판정까지 걸리는 시간(초). 주먹이 뻗는 순간에 맞춰 조절한다
+	// 몽타주 길이보다 길면 판정 전에 어빌리티가 끝나 데미지가 들어가지 않는다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능
+	// Category         : "Melee|Animation" 하위 그룹으로 표시
+	// meta=(ClampMin)  : 0 미만 입력 방지
+	UPROPERTY(EditDefaultsOnly, Category = "Melee|Animation", meta = (ClampMin = "0"))
+	float HitDelay = 0.4f;
 
 	// 판정 범위를 디버그 구체로 그릴지 여부
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능

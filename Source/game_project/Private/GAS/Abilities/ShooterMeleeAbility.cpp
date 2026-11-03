@@ -2,7 +2,8 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Character/ShooterCharacterBase.h"
-#include "Animation/AnimInstance.h"
+#include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "DrawDebugHelpers.h"
 
 UShooterMeleeAbility::UShooterMeleeAbility()
@@ -21,27 +22,53 @@ void UShooterMeleeAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 		return;
 	}
 
-	// 공격하는 쪽(나) = 이 어빌리티를 가진 ASC의 Avatar
-	APawn* Attacker = Cast<APawn>(ActorInfo->AvatarActor.Get());
-	UWorld* World = GetWorld();
-	if (!Attacker || !World)
+	// 2) 몽타주가 없으면 바로 판정하고 끝
+	if (!AttackMontage)
 	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		PerformAttack();
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
 
-	// 2) [선택] 공격 애니메이션 재생. 몽타주가 비어 있으면 건너뜀
-	//    AnimInstance = 캐릭터 메시에 붙은 애니메이션 블루프린트 인스턴스 (Unity의 Animator와 비슷)
-	//    지금은 "재생만" 하고 판정은 바로 한다. 휘두르는 타이밍에 맞춰 판정하는 건 에셋이 생기면 개선 예정
-	if (AttackMontage)
+	// 3) 공격 몽타주 재생. 끝나거나 끊기면 어빌리티 종료 (재장전 어빌리티와 같은 방식)
+	UAbilityTask_PlayMontageAndWait* MontageTask =
+		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, AttackMontage);
+	MontageTask->OnBlendOut.AddDynamic(this, &UShooterMeleeAbility::OnAttackFinished);
+	MontageTask->OnCompleted.AddDynamic(this, &UShooterMeleeAbility::OnAttackFinished);
+	MontageTask->OnInterrupted.AddDynamic(this, &UShooterMeleeAbility::OnAttackFinished);
+	MontageTask->OnCancelled.AddDynamic(this, &UShooterMeleeAbility::OnAttackFinished);
+	MontageTask->ReadyForActivation();
+
+	// 4) HitDelay초 뒤 판정. 휘두르는 동안 플레이어가 물러나면 피할 수 있다
+	//    WaitDelay: 어빌리티 안에서 쓰는 대기 태스크 (Unity 코루틴의 yield return new WaitForSeconds)
+	//    어빌리티가 먼저 끝나거나 취소되면(적 사망 등) 태스크도 같이 사라져 판정이 나가지 않는다
+	UAbilityTask_WaitDelay* HitTask = UAbilityTask_WaitDelay::WaitDelay(this, HitDelay);
+	HitTask->OnFinish.AddDynamic(this, &UShooterMeleeAbility::OnHitTime);
+	HitTask->ReadyForActivation();
+}
+
+void UShooterMeleeAbility::OnHitTime()
+{
+	PerformAttack();
+}
+
+void UShooterMeleeAbility::OnAttackFinished()
+{
+	// BlendOut 다음에 Completed가 또 올 수 있지만, 첫 번째에서 어빌리티를 끝내면 태스크도 정리된다
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
+void UShooterMeleeAbility::PerformAttack()
+{
+	// 공격하는 쪽(나) = 이 어빌리티를 가진 ASC의 Avatar
+	APawn* Attacker = Cast<APawn>(GetAvatarActorFromActorInfo());
+	UWorld* World = GetWorld();
+	if (!Attacker || !World)
 	{
-		if (UAnimInstance* AnimInstance = ActorInfo->GetAnimInstance())
-		{
-			AnimInstance->Montage_Play(AttackMontage);
-		}
+		return;
 	}
 
-	// 3) 판정: 내 몸 중심 → 앞쪽 AttackRange까지 구체를 쓸어서(Sweep) 겹치는 Pawn을 모두 찾는다
+	// 판정: 내 몸 중심 → 앞쪽 AttackRange까지 구체를 쓸어서(Sweep) 겹치는 Pawn을 모두 찾는다
 	//    Sweep = 도형을 이동시키며 충돌 검사 (Unity의 Physics.SphereCastAll과 같은 개념)
 	const FVector Start = Attacker->GetActorLocation();
 	const FVector End = Start + Attacker->GetActorForwardVector() * AttackRange;
@@ -58,7 +85,7 @@ void UShooterMeleeAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 		DrawDebugSphere(World, End, AttackRadius, 12, FColor::Orange, false, 1.f);
 	}
 
-	// 4) 맞은 대상 중 "상대편"에게만 데미지 적용
+	// 맞은 대상 중 "상대편"에게만 데미지 적용
 	//    TSet: 중복 없는 집합 (C#의 HashSet). 한 캐릭터가 여러 번 검출돼도 데미지는 한 번만
 	TSet<AActor*> AlreadyHit;
 	for (const FHitResult& Hit : Hits)
@@ -93,7 +120,4 @@ void UShooterMeleeAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 			}
 		}
 	}
-
-	// 5) 종료 알림 (안 하면 "실행 중"으로 남아 다음 공격이 거부된다)
-	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
