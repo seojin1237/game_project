@@ -7,8 +7,8 @@
 
 AShooterHealthPickup::AShooterHealthPickup()
 {
-	// 매 프레임 할 일이 없으므로 Tick을 끈다
-	PrimaryActorTick.bCanEverTick = false;
+	// 떠다니는 움직임을 Tick에서 처리한다
+	PrimaryActorTick.bCanEverTick = true;
 
 	// 안 먹고 내버려 두면 이 시간(초) 뒤 자동으로 사라진다 (Unity의 Destroy(gameObject, 15f)). 실제 튜닝은 BP에서
 	InitialLifeSpan = 15.f;
@@ -28,6 +28,15 @@ AShooterHealthPickup::AShooterHealthPickup()
 
 	// 생성자에서 연결하는 이유: 플레이어 바로 위에 스폰돼도, 스폰 순간의 겹침 이벤트를 놓치지 않게
 	PickupSphere->OnComponentBeginOverlap.AddDynamic(this, &AShooterHealthPickup::OnPickupOverlap);
+}
+
+void AShooterHealthPickup::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	// 충돌 범위(PickupSphere)는 그대로 두고 보이는 메시만 움직인다
+	// Sin: -1 ~ 1을 반복하는 값 (Unity의 Mathf.Sin). GetGameTimeSinceCreation: 이 액터가 생긴 뒤 흐른 시간(초)
+	MeshComponent->SetRelativeLocation(FVector(0.f, 0.f, FMath::Sin(GetGameTimeSinceCreation() * BobSpeed) * BobHeight));
 }
 
 void AShooterHealthPickup::OnPickupOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
@@ -53,6 +62,14 @@ void AShooterHealthPickup::OnPickupOverlap(UPrimitiveComponent* OverlappedCompon
 	if (Spec.IsValid())
 	{
 		ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+	}
+
+	// 소리와 이펙트는 GameplayCue에 맡긴다. 액터가 곧 사라져도 Cue는 이 위치에서 끝까지 재생된다
+	if (PickupCueTag.IsValid())
+	{
+		FGameplayCueParameters CueParams;
+		CueParams.Location = GetActorLocation();
+		ASC->ExecuteGameplayCue(PickupCueTag, CueParams);
 	}
 
 	Destroy();
