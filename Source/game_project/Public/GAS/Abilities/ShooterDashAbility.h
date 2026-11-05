@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "GAS/ShooterGameplayAbility.h"
 #include "ShooterDashAbility.generated.h"
 
@@ -14,6 +15,7 @@ class UAnimSequenceBase;
  *  - Cooldown Gameplay Effect Class : GE_Cooldown_Dash (쿨타임 시간은 이 GE에서 조절)
  *  - Activation Owned Tags          : State.Dashing (대시하는 동안 붙는 태그 → GA_Fire가 이 태그로 막힌다), State.Invincible (대시 중 무적)
  *  - Activation Blocked Tags        : State.Dead, State.InAir (죽은 뒤와 공중에서는 대시 불가)
+ *  - Dash Cue Tag                   : GameplayCue.Dash (대시할 때의 소리와 이펙트는 GC_Dash에서 조절)
  */
 UCLASS()
 class GAME_PROJECT_API UShooterDashAbility : public UShooterGameplayAbility
@@ -37,6 +39,12 @@ protected:
 	// 대시에 걸리는 시간 (초). 짧을수록 빠르게 튀어 나간다 (지정자 의미는 위와 동일)
 	UPROPERTY(EditDefaultsOnly, Category = "Dash", meta = (ClampMin = "0.05"))
 	float DashDuration = 0.25f;
+
+	// 대시할 때 실행할 GameplayCue 태그. 어떤 소리와 이펙트가 나올지는 Cue 에셋(GC_Dash)에서 정한다
+	// EditDefaultsOnly : GA_Dash의 Class Defaults에서만 수정 가능
+	// Category         : "Dash" 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Dash")
+	FGameplayTag DashCueTag;
 
 	// 앞으로 대시할 때 재생할 애니메이션 (GA_Dash에서 지정)
 	// EditDefaultsOnly : GA_Dash의 Class Defaults에서만 수정 가능

@@ -1,4 +1,5 @@
 #include "GAS/Abilities/ShooterDashAbility.h"
+#include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionConstantForce.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimSequenceBase.h"
@@ -42,6 +43,14 @@ void UShooterDashAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 	if (DashAnimation && AnimInstance)
 	{
 		AnimInstance->PlaySlotAnimationAsDynamicMontage(DashAnimation, TEXT("DefaultSlot"), 0.05f, 0.2f, DashAnimationPlayRate);
+	}
+
+	// 소리와 이펙트는 GameplayCue에 맡긴다. Location을 넘겨서 대시를 시작한 자리에서 재생되게 한다
+	if (DashCueTag.IsValid())
+	{
+		FGameplayCueParameters CueParams;
+		CueParams.Location = Character->GetActorLocation();
+		GetAbilitySystemComponentFromActorInfo()->ExecuteGameplayCue(DashCueTag, CueParams);
 	}
 
 	// ApplyRootMotionConstantForce: 정해진 시간 동안 정해진 속도로 캐릭터를 민다
