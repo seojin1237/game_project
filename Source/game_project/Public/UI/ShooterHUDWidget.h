@@ -63,6 +63,9 @@ protected:
 	// ASC에서 현재 탄약 값을 읽어 위젯에 반영
 	void RefreshAmmo();
 
+	// 대시 쿨타임이 얼마나 지났는지 읽어 바에 반영 (쿨타임 이벤트가 없어 매 프레임 호출)
+	void RefreshDashCooldown();
+
 	// [BP 확장용] 체력이 바뀔 때마다 호출. 피격 시 화면 깜빡임 같은 연출을 BP에서 붙일 수 있다
 	// BlueprintImplementableEvent : C++은 선언만, 몸체는 BP 이벤트 그래프에서 구현 (구현 안 하면 아무 일 없음)
 	// Category                    : "HUD" 그룹으로 표시
@@ -102,6 +105,11 @@ protected:
 	// BindWidgetOptional : 위와 동일 (선택)
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UImage> DamageOverlay;
+
+	// 대시 쿨타임 바. 가득 차 있으면 대시 가능. 없어도 된다
+	// BindWidgetOptional : 위와 동일 (선택)
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UProgressBar> DashCooldownBar;
 
 	// 맞은 순간 붉은 화면의 진하기 (0 = 안 보임, 1 = 가장 진함)
 	// EditDefaultsOnly : WBP_HUD의 Class Defaults에서만 수정 가능 (연출 수치라 BP에서 튜닝)

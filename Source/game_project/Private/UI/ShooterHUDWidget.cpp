@@ -6,6 +6,10 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Game/ShooterGameMode.h"
+#include "NativeGameplayTags.h"
+
+// 이 파일에서만 쓰는 태그. 태그 자체는 DefaultGameplayTags.ini에 등록돼 있고, GE_Cooldown_Dash가 부여한다
+UE_DEFINE_GAMEPLAY_TAG_STATIC(TAG_Cooldown_Dash, "Cooldown.Dash");
 
 void UShooterHUDWidget::NativeConstruct()
 {
@@ -31,6 +35,8 @@ void UShooterHUDWidget::NativeConstruct()
 void UShooterHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	RefreshDashCooldown();
 
 	if (DamageOverlay && CurrentDamageFlash > 0.f)
 	{
@@ -189,6 +195,31 @@ void UShooterHUDWidget::RefreshHealth()
 
 	// BP 연출용 이벤트
 	OnHealthUpdated(Health, MaxHealth);
+}
+
+void UShooterHUDWidget::RefreshDashCooldown()
+{
+	if (!DashCooldownBar)
+	{
+		return;
+	}
+
+	// 쿨타임이 아니면 가득 찬 상태 (태그 검사가 GE 검색보다 가벼우니 먼저 확인)
+	float ReadyPercent = 1.f;
+	const UAbilitySystemComponent* ASC = BoundASC.Get();
+	if (ASC && ASC->HasMatchingGameplayTag(TAG_Cooldown_Dash))
+	{
+		// 쿨타임 시간을 C++에 두지 않고, 적용 중인 GE에서 남은 시간과 전체 시간을 읽는다 → GE_Cooldown_Dash만 고치면 바도 따라온다
+		// MakeQuery_MatchAnyOwningTags: 이 태그를 가진 GE를 찾는 조건 (C#의 LINQ Where와 비슷)
+		// TPair: 값 두 개를 묶은 구조체 (C#의 KeyValuePair). Key = 남은 시간, Value = 전체 시간
+		const FGameplayEffectQuery Query = FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(FGameplayTagContainer(TAG_Cooldown_Dash));
+		const TArray<TPair<float, float>> Cooldowns = ASC->GetActiveEffectsTimeRemainingAndDuration(Query);
+		if (!Cooldowns.IsEmpty() && Cooldowns[0].Value > 0.f)
+		{
+			ReadyPercent = 1.f - Cooldowns[0].Key / Cooldowns[0].Value;
+		}
+	}
+	DashCooldownBar->SetPercent(ReadyPercent);
 }
 
 void UShooterHUDWidget::HandleAmmoAttributeChanged(const FOnAttributeChangeData& Data)
