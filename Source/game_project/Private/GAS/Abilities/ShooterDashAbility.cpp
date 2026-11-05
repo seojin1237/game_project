@@ -1,5 +1,8 @@
 #include "GAS/Abilities/ShooterDashAbility.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionConstantForce.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimSequenceBase.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/RootMotionSource.h"
@@ -32,6 +35,15 @@ void UShooterDashAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 		Direction = Character->GetActorForwardVector();
 	}
 
+	// PlaySlotAnimationAsDynamicMontage: 시퀀스를 임시 Montage로 감싸 Slot에 재생한다 (Montage 에셋을 따로 만들 필요 없음)
+	// 같은 Slot 그룹의 다른 Montage는 멈추므로, 재장전 중에 대시하면 재장전이 취소된다
+	UAnimSequenceBase* DashAnimation = SelectDashAnimation(*Character, Direction);
+	UAnimInstance* AnimInstance = Character->GetMesh() ? Character->GetMesh()->GetAnimInstance() : nullptr;
+	if (DashAnimation && AnimInstance)
+	{
+		AnimInstance->PlaySlotAnimationAsDynamicMontage(DashAnimation, TEXT("DefaultSlot"), 0.05f, 0.2f, DashAnimationPlayRate);
+	}
+
 	// ApplyRootMotionConstantForce: 정해진 시간 동안 정해진 속도로 캐릭터를 민다
 	// LaunchCharacter(순간 속도 주기)와 달리 마찰의 영향을 받지 않아 이동 거리가 항상 일정하다 (거리 = 속도 × 시간)
 	// 끝날 때 ClampVelocity: 대시 속도를 평소 최고 속도로 줄여서, 뚝 멈추지 않고 달리기로 자연스럽게 이어진다
@@ -52,6 +64,20 @@ void UShooterDashAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 
 	// 태스크는 만든 뒤 반드시 시작해야 동작한다
 	Task->ReadyForActivation();
+}
+
+UAnimSequenceBase* UShooterDashAbility::SelectDashAnimation(const AActor& Avatar, const FVector& Direction) const
+{
+	// 내적(Dot): 두 방향이 얼마나 같은 쪽을 보는지 (같으면 1, 수직이면 0, 반대면 -1. Unity의 Vector3.Dot)
+	const float ForwardAmount = FVector::DotProduct(Direction, Avatar.GetActorForwardVector());
+	const float RightAmount = FVector::DotProduct(Direction, Avatar.GetActorRightVector());
+
+	// 대각선 대시는 앞뒤/좌우 중 더 가까운 쪽의 애니메이션을 쓴다
+	if (FMath::Abs(ForwardAmount) >= FMath::Abs(RightAmount))
+	{
+		return ForwardAmount >= 0.f ? DashForwardAnimation : DashBackwardAnimation;
+	}
+	return RightAmount >= 0.f ? DashRightAnimation : DashLeftAnimation;
 }
 
 void UShooterDashAbility::OnDashFinished()
