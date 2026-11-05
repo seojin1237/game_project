@@ -14,6 +14,16 @@ void UShooterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	const AShooterCharacter* Character = Cast<AShooterCharacter>(TryGetPawnOwner());
 	const AShooterWeapon* Weapon = Character ? Character->GetCurrentWeapon() : nullptr;
 
+	// 지금 든 무기의 애니메이션으로 바꿔 끼운다. ABP 그래프는 하나로 두고 재생할 에셋만 무기마다 달라진다
+	// 무기에 지정이 안 돼 있으면 지금 값을 그대로 둔다
+	if (Weapon && Weapon->GetLocomotionBlendSpace())
+	{
+		LocomotionBlendSpace = Weapon->GetLocomotionBlendSpace();
+		IdleAnimation = Weapon->GetIdleAnimation();
+		TurnLeftAnimation = Weapon->GetTurnLeftAnimation();
+		TurnRightAnimation = Weapon->GetTurnRightAnimation();
+	}
+
 	// 이동 값 계산 (ABP의 Blend Space와 상태 전환이 읽는다)
 	if (const UCharacterMovementComponent* Movement = Character ? Character->GetCharacterMovement() : nullptr)
 	{

@@ -4,6 +4,9 @@
 #include "Animation/AnimInstance.h"
 #include "ShooterAnimInstance.generated.h"
 
+class UAnimSequenceBase;
+class UBlendSpace;
+
 /**
  * 플레이어 애니메이션 BP(ABP_Rifle)의 C++ 부모.
  *
@@ -44,6 +47,26 @@ protected:
 	// 공중에 있는지. 점프/낙하 상태 전환과 발 IK 끄기에 사용 (지정자 의미는 위와 동일)
 	UPROPERTY(BlueprintReadOnly, Category = "Shooter|Movement")
 	bool bIsFalling = false;
+
+	// 지금 든 무기의 걷기/뛰기 Blend Space. ABP의 Blend Space 노드 입력에 연결
+	// 값은 게임 중 무기에서 가져오고, ABP에 넣어 둔 기본값은 무기가 없을 때와 ABP 미리보기 창에서 쓰인다
+	// EditDefaultsOnly  : ABP의 Class Defaults에서 기본값 지정
+	// BlueprintReadOnly : ABP 그래프에서 읽기만 가능
+	// Category          : "Shooter|WeaponAnim" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooter|WeaponAnim")
+	TObjectPtr<UBlendSpace> LocomotionBlendSpace;
+
+	// 지금 든 무기의 서 있는 자세. Idle 상태와 상체 겨누기에 함께 쓴다 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooter|WeaponAnim")
+	TObjectPtr<UAnimSequenceBase> IdleAnimation;
+
+	// 지금 든 무기의 왼쪽으로 도는 동작 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooter|WeaponAnim")
+	TObjectPtr<UAnimSequenceBase> TurnLeftAnimation;
+
+	// 지금 든 무기의 오른쪽으로 도는 동작 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooter|WeaponAnim")
+	TObjectPtr<UAnimSequenceBase> TurnRightAnimation;
 
 	// 서 있는 동안 몸(캡슐)이 돈 만큼 메시를 반대로 돌리는 각도 (도). ABP의 Rotate Root Bone에 연결
 	// → 몸은 카메라를 따라 돌아도 발은 제자리에 남는다

@@ -9,6 +9,8 @@ class UStaticMeshComponent;
 class USceneComponent;
 class UGameplayEffect;
 class UAnimMontage;
+class UAnimSequenceBase;
+class UBlendSpace;
 class UNiagaraSystem;
 
 /**
@@ -45,6 +47,10 @@ public:
 	UAnimMontage* GetFireMontage() const { return FireMontage; }
 	UAnimMontage* GetEquipMontage() const { return EquipMontage; }
 	UAnimMontage* GetReloadMontage() const { return ReloadMontage; }
+	UBlendSpace* GetLocomotionBlendSpace() const { return LocomotionBlendSpace; }
+	UAnimSequenceBase* GetIdleAnimation() const { return IdleAnimation; }
+	UAnimSequenceBase* GetTurnLeftAnimation() const { return TurnLeftAnimation; }
+	UAnimSequenceBase* GetTurnRightAnimation() const { return TurnRightAnimation; }
 	float GetRecoilPitch() const { return RecoilPitch; }
 	float GetRecoilYaw() const { return RecoilYaw; }
 	FGameplayTag GetFireCueTag() const { return FireCueTag; }
@@ -133,6 +139,24 @@ protected:
 	// Category         : "Weapon|Reload" 하위 그룹으로 표시
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Reload")
 	TObjectPtr<UAnimMontage> ReloadMontage;
+
+	// 이 무기를 들고 걷거나 뛸 때의 Blend Space. 애니메이션 BP 하나를 무기마다 다른 에셋으로 재생하려고 무기가 들고 있다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "Weapon|Animation" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Animation")
+	TObjectPtr<UBlendSpace> LocomotionBlendSpace;
+
+	// 이 무기를 들고 서 있거나 겨눌 때의 자세 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Animation")
+	TObjectPtr<UAnimSequenceBase> IdleAnimation;
+
+	// 이 무기를 들고 제자리에서 왼쪽으로 돌 때의 동작 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Animation")
+	TObjectPtr<UAnimSequenceBase> TurnLeftAnimation;
+
+	// 이 무기를 들고 제자리에서 오른쪽으로 돌 때의 동작 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Animation")
+	TObjectPtr<UAnimSequenceBase> TurnRightAnimation;
 
 	// 쏠 때마다 총구에서 재생할 Niagara 이펙트 (BP에서 NS_MuzzleFlash 등 지정, 비우면 재생 안 함)
 	// Niagara System = 언리얼의 파티클 이펙트 에셋 (Unity의 Particle System / VFX Graph)
