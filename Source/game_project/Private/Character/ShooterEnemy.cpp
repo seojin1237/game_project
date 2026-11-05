@@ -6,6 +6,7 @@
 #include "UI/ShooterHealthBarWidget.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimSequenceBase.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "TimerManager.h"
 
@@ -154,6 +155,18 @@ void AShooterEnemy::Die()
 	if (HealthBarWidget)
 	{
 		HealthBarWidget->SetVisibility(false);
+	}
+
+	// 확률에 따라 아이템을 떨어뜨린다. FRand(): 0 ~ 1 사이 랜덤 실수 (Unity의 Random.value)
+	if (DropClass && FMath::FRand() < DropChance)
+	{
+		// 액터 위치는 캡슐 중심(허리 높이)이므로 발밑으로 내린 뒤, 바닥에 묻히지 않게 조금 띄운다
+		const FVector DropLocation = GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() - 40.f);
+
+		// AlwaysSpawn: 다른 물체와 겹쳐도 스폰을 취소하지 않는다
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		GetWorld()->SpawnActor<AActor>(DropClass, DropLocation, FRotator::ZeroRotator, Params);
 	}
 
 	// 적만의 추가 처리: DeathLifeSpan초 뒤 자동 삭제 (Unity의 Destroy(gameObject, delay))

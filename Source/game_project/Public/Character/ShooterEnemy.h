@@ -78,4 +78,16 @@ protected:
 	// 사망 후 액터가 사라지기까지 걸리는 시간(초). 0이면 사라지지 않음 (지정자 의미는 위와 동일)
 	UPROPERTY(EditDefaultsOnly, Category = "Enemy", meta = (ClampMin = "0"))
 	float DeathLifeSpan = 3.f;
+
+	// 죽을 때 떨어뜨릴 아이템 (BP에서 BP_Pickup_Health 지정). 비우면 떨어뜨리지 않는다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "Enemy|Drop" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Enemy|Drop")
+	TSubclassOf<AActor> DropClass;
+
+	// 아이템을 떨어뜨릴 확률 (0 = 안 떨어뜨림, 1 = 항상)
+	// EditDefaultsOnly, Category : 위와 동일
+	// meta=(ClampMin, ClampMax)  : 0 ~ 1 범위로 제한
+	UPROPERTY(EditDefaultsOnly, Category = "Enemy|Drop", meta = (ClampMin = "0", ClampMax = "1"))
+	float DropChance = 0.25f;
 };
