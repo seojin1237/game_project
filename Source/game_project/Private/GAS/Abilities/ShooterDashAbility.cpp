@@ -1,6 +1,8 @@
 #include "GAS/Abilities/ShooterDashAbility.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionConstantForce.h"
+#include "Abilities/Tasks/AbilityTask_Repeat.h"
+#include "Actor/ShooterDashAfterimage.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimSequenceBase.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -73,6 +75,34 @@ void UShooterDashAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 
 	// 태스크는 만든 뒤 반드시 시작해야 동작한다
 	Task->ReadyForActivation();
+
+	// AbilityTask_Repeat: 정해진 간격으로 정해진 횟수만큼 이벤트를 부른다
+	// 직접 타이머를 쓰는 것과 달리, 어빌리티가 끝나거나 취소되면 태스크도 같이 정리되어 잔상이 알아서 멈춘다
+	if (AfterimageClass)
+	{
+		UAbilityTask_Repeat* AfterimageTask = UAbilityTask_Repeat::RepeatAction(
+			this,
+			AfterimageInterval,
+			FMath::CeilToInt(DashDuration / AfterimageInterval));
+		AfterimageTask->OnPerformAction.AddDynamic(this, &UShooterDashAbility::SpawnAfterimage);
+		AfterimageTask->ReadyForActivation();
+	}
+}
+
+void UShooterDashAbility::SpawnAfterimage(int32 ActionNumber)
+{
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	USkeletalMeshComponent* Mesh = Character ? Character->GetMesh() : nullptr;
+	if (!Mesh)
+	{
+		return;
+	}
+
+	// 캐릭터 메시와 같은 위치, 회전, 크기로 스폰해야 복사한 자세가 정확히 겹친다
+	if (AShooterDashAfterimage* Afterimage = GetWorld()->SpawnActor<AShooterDashAfterimage>(AfterimageClass, Mesh->GetComponentTransform()))
+	{
+		Afterimage->CopyPose(Mesh);
+	}
 }
 
 UAnimSequenceBase* UShooterDashAbility::SelectDashAnimation(const AActor& Avatar, const FVector& Direction) const

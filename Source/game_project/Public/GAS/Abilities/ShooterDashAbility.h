@@ -5,6 +5,7 @@
 #include "GAS/ShooterGameplayAbility.h"
 #include "ShooterDashAbility.generated.h"
 
+class AShooterDashAfterimage;
 class UAnimSequenceBase;
 
 /**
@@ -16,6 +17,7 @@ class UAnimSequenceBase;
  *  - Activation Owned Tags          : State.Dashing (대시하는 동안 붙는 태그 → GA_Fire가 이 태그로 막힌다), State.Invincible (대시 중 무적)
  *  - Activation Blocked Tags        : State.Dead, State.InAir (죽은 뒤와 공중에서는 대시 불가)
  *  - Dash Cue Tag                   : GameplayCue.Dash (대시할 때의 소리와 이펙트는 GC_Dash에서 조절)
+ *  - Afterimage Class               : BP_DashAfterimage (비워 두면 잔상이 나오지 않음)
  */
 UCLASS()
 class GAME_PROJECT_API UShooterDashAbility : public UShooterGameplayAbility
@@ -45,6 +47,18 @@ protected:
 	// Category         : "Dash" 그룹으로 표시
 	UPROPERTY(EditDefaultsOnly, Category = "Dash")
 	FGameplayTag DashCueTag;
+
+	// 대시 중에 남길 잔상 액터. 색과 사라지는 시간은 이 BP에서 정한다
+	// EditDefaultsOnly : GA_Dash의 Class Defaults에서만 수정 가능
+	// Category         : "Dash|Afterimage" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Dash|Afterimage")
+	TSubclassOf<AShooterDashAfterimage> AfterimageClass;
+
+	// 잔상을 남기는 간격(초). 작을수록 촘촘하다
+	// EditDefaultsOnly, Category : 위와 동일
+	// meta=(ClampMin)            : 0 이하면 타이머가 돌지 않으므로 방지
+	UPROPERTY(EditDefaultsOnly, Category = "Dash|Afterimage", meta = (ClampMin = "0.01"))
+	float AfterimageInterval = 0.05f;
 
 	// 앞으로 대시할 때 재생할 애니메이션 (GA_Dash에서 지정)
 	// EditDefaultsOnly : GA_Dash의 Class Defaults에서만 수정 가능
@@ -78,4 +92,9 @@ private:
 	// UFUNCTION() : AbilityTask의 이벤트는 다이내믹 델리게이트라서, 연결할 함수가 리플렉션에 등록돼 있어야 한다
 	UFUNCTION()
 	void OnDashFinished();
+
+	// 잔상 하나를 지금 자리에 남긴다
+	// UFUNCTION() : AbilityTask_Repeat의 이벤트도 다이내믹 델리게이트라서 필요. ActionNumber는 몇 번째 반복인지 알려 주는 값
+	UFUNCTION()
+	void SpawnAfterimage(int32 ActionNumber);
 };
