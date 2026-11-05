@@ -19,6 +19,7 @@ void UShooterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	if (Weapon && Weapon->GetLocomotionBlendSpace())
 	{
 		LocomotionBlendSpace = Weapon->GetLocomotionBlendSpace();
+		AimOffset = Weapon->GetAimOffset();
 		IdleAnimation = Weapon->GetIdleAnimation();
 		TurnLeftAnimation = Weapon->GetTurnLeftAnimation();
 		TurnRightAnimation = Weapon->GetTurnRightAnimation();

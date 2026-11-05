@@ -48,6 +48,7 @@ public:
 	UAnimMontage* GetEquipMontage() const { return EquipMontage; }
 	UAnimMontage* GetReloadMontage() const { return ReloadMontage; }
 	UBlendSpace* GetLocomotionBlendSpace() const { return LocomotionBlendSpace; }
+	UBlendSpace* GetAimOffset() const { return AimOffset; }
 	UAnimSequenceBase* GetIdleAnimation() const { return IdleAnimation; }
 	UAnimSequenceBase* GetTurnLeftAnimation() const { return TurnLeftAnimation; }
 	UAnimSequenceBase* GetTurnRightAnimation() const { return TurnRightAnimation; }
@@ -145,6 +146,10 @@ protected:
 	// Category         : "Weapon|Animation" 하위 그룹으로 표시
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Animation")
 	TObjectPtr<UBlendSpace> LocomotionBlendSpace;
+
+	// 이 무기를 들고 위아래를 볼 때 상체를 기울이는 Aim Offset. 세로축은 각도(-90 ~ 90)여야 한다 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Animation")
+	TObjectPtr<UBlendSpace> AimOffset;
 
 	// 이 무기를 들고 서 있거나 겨눌 때의 자세 (지정자 의미는 위와 동일)
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Animation")

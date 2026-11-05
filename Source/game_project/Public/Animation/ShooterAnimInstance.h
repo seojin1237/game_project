@@ -56,6 +56,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooter|WeaponAnim")
 	TObjectPtr<UBlendSpace> LocomotionBlendSpace;
 
+	// 지금 든 무기의 Aim Offset. Aim Offset은 위아래 각도에 따라 상체를 기울이는 Blend Space다 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooter|WeaponAnim")
+	TObjectPtr<UBlendSpace> AimOffset;
+
 	// 지금 든 무기의 서 있는 자세. Idle 상태와 상체 겨누기에 함께 쓴다 (지정자 의미는 위와 동일)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooter|WeaponAnim")
 	TObjectPtr<UAnimSequenceBase> IdleAnimation;
@@ -115,7 +119,7 @@ protected:
 	float LeftHandIKAlpha = 0.f;
 
 	// 위아래 조준 각도 (도). 위를 보면 +, 아래를 보면 - (약 -90 ~ 90)
-	// ABP의 Aim Offset 노드(AO_Rifle)에 연결해서 상체와 총이 바라보는 방향을 따라가게 한다
+	// ABP의 Aim Offset 노드에 연결해서 상체와 총이 바라보는 방향을 따라가게 한다
 	// BlueprintReadOnly : ABP 그래프에서 읽기만 가능 (값은 C++이 계산)
 	// Category          : "Shooter|Aim" 하위 그룹으로 표시
 	UPROPERTY(BlueprintReadOnly, Category = "Shooter|Aim")
