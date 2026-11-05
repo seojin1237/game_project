@@ -20,7 +20,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWaveStateChanged, int32, WaveNum
 /**
  * 게임 규칙 담당: 웨이브 진행.
  *  1) 시작 후 FirstWaveDelay초 대기 → 1웨이브 시작
- *  2) 웨이브 데이터(DT_Waves)의 적 수만큼, SpawnInterval초마다 1마리씩 스폰 (레벨의 TargetPoint 중 랜덤 위치)
+ *  2) 웨이브 데이터(DT_Waves)의 적 수만큼, SpawnInterval초마다 1마리씩 스폰 (플레이어 주변 랜덤 위치. 찾지 못하면 레벨의 TargetPoint)
  *  3) 그 웨이브의 적을 모두 처치하면 UpgradeOfferDelay초 뒤 업그레이드 선택 → TimeBetweenWaves초 쉬고 다음 웨이브
  *  4) 표의 마지막 줄을 넘어가면 마지막 줄을 재사용하되 웨이브마다 적을 더 늘린다 (끝없는 생존)
  *  5) 플레이어가 죽으면 진행 중단
@@ -73,6 +73,9 @@ protected:
 	// 스폰 타이머가 주기적으로 호출: 적 1마리 스폰
 	void SpawnEnemy();
 
+	// 플레이어 주변에서 적이 걸어올 수 있는 랜덤 위치를 찾는다. 찾으면 true (Out 매개변수에 위치와 플레이어를 보는 회전을 넣는다)
+	bool FindRandomSpawnTransform(TSubclassOf<AShooterEnemy> EnemyClass, FVector& OutLocation, FRotator& OutRotation);
+
 	// 스폰한 적이 죽었을 때 호출 (적의 OnCharacterDied 이벤트에 연결)
 	// UFUNCTION() : 다이내믹 델리게이트(AddDynamic)에 연결하려면 리플렉션에 등록된 함수여야 해서 필요
 	UFUNCTION()
@@ -114,6 +117,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Wave", meta = (ClampMin = "0"))
 	int32 ExtraEnemiesPerWaveAfterTable = 2;
 
+	// 적이 스폰되는 플레이어와의 최소 거리(cm). 눈앞에 갑자기 나타나지 않게 한다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능
+	// Category         : "Wave|Spawn" 하위 그룹으로 표시
+	// meta=(ClampMin)  : 음수 입력 방지
+	UPROPERTY(EditDefaultsOnly, Category = "Wave|Spawn", meta = (ClampMin = "0"))
+	float SpawnMinRadius = 1500.f;
+
+	// 적이 스폰되는 플레이어와의 최대 거리(cm). 너무 멀어 오래 걸어오지 않게 한다 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, Category = "Wave|Spawn", meta = (ClampMin = "0"))
+	float SpawnMaxRadius = 3500.f;
+
 	// 등장 가능한 업그레이드 카드 목록 (BP에서 DA_Upgrade_XXX 에셋들을 추가)
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능
 	// Category         : "Upgrade" 그룹으로 표시
@@ -138,6 +152,7 @@ private:
 	int32 CurrentWave = 0;          // 현재 웨이브 번호 (1부터)
 	int32 EnemiesLeftToSpawn = 0;   // 이번 웨이브에서 아직 스폰 안 된 적 수
 	int32 EnemiesAlive = 0;         // 스폰되어 살아있는 적 수
+	float NextSpawnAngle = 0.f;     // 다음 적을 스폰할 방향(도). 한쪽에 몰리지 않게 스폰마다 크게 돌린다
 
 	// 이번 웨이브 설정 (표에서 읽어온 값)
 	// UPROPERTY() : 가비지 컬렉터가 추적하도록 (클래스 참조도 UObject라 필요)

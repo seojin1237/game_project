@@ -7,8 +7,11 @@
 #include "GAS/ShooterUpgradeData.h"
 #include "GAS/ShooterAttributeSet.h"
 #include "AbilitySystemComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Engine/TargetPoint.h"
 #include "Kismet/GameplayStatics.h"
+#include "NavigationPath.h"
+#include "NavigationSystem.h"
 #include "TimerManager.h"
 
 AShooterGameMode::AShooterGameMode()
@@ -24,7 +27,10 @@ void AShooterGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 1) 레벨에 놓인 모든 TargetPoint를 스폰 지점으로 수집
+	// 첫 스폰 방향을 랜덤으로 정한다. 이후 방향은 FindRandomSpawnTransform이 돌려 나간다
+	NextSpawnAngle = FMath::FRandRange(0.f, 360.f);
+
+	// 1) 레벨에 놓인 모든 TargetPoint를 예비 스폰 지점으로 수집 (랜덤 위치를 찾지 못했을 때만 쓴다)
 	//    GetAllActorsOfClass: 월드에서 해당 클래스 액터를 전부 찾는다 (Unity의 FindObjectsOfType<T>()와 같음)
 	//    매 스폰마다 찾으면 느리므로 시작할 때 한 번만 찾아서 저장
 	TArray<AActor*> FoundPoints;
@@ -33,7 +39,7 @@ void AShooterGameMode::BeginPlay()
 
 	if (SpawnPoints.IsEmpty())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Wave] 레벨에 TargetPoint가 없습니다. 적을 스폰할 수 없습니다."));
+		UE_LOG(LogTemp, Warning, TEXT("[Wave] 레벨에 TargetPoint가 없습니다. 랜덤 위치를 찾지 못하면 적을 스폰할 수 없습니다."));
 	}
 	if (!WaveTable)
 	{
@@ -94,17 +100,27 @@ void AShooterGameMode::SpawnEnemy()
 	const TSubclassOf<AShooterEnemy> EnemyClass = PickEnemyClass();
 
 	// 다 스폰했거나, 설정이 비었거나, 플레이어가 죽었으면 스폰 중단
-	if (EnemiesLeftToSpawn <= 0 || !EnemyClass || SpawnPoints.IsEmpty() || IsPlayerDead())
+	if (EnemiesLeftToSpawn <= 0 || !EnemyClass || IsPlayerDead())
 	{
 		GetWorldTimerManager().ClearTimer(SpawnTimerHandle);
 		return;
 	}
 
-	// 스폰 지점 중 하나를 랜덤으로 고른다 (Unity의 Random.Range(0, count))
-	const AActor* Point = SpawnPoints[FMath::RandRange(0, SpawnPoints.Num() - 1)];
-	if (!Point)
+	FVector SpawnLocation;
+	FRotator SpawnRotation;
+	if (!FindRandomSpawnTransform(EnemyClass, SpawnLocation, SpawnRotation))
 	{
-		return;
+		// 랜덤 위치를 못 찾으면 TargetPoint 중 하나를 쓴다 (Unity의 Random.Range(0, count))
+		const AActor* Point = SpawnPoints.IsEmpty() ? nullptr : SpawnPoints[FMath::RandRange(0, SpawnPoints.Num() - 1)].Get();
+		if (!Point)
+		{
+			// 타이머는 그대로 두어 다음 간격에 다시 시도한다 (플레이어가 움직이면 찾을 수 있다)
+			UE_LOG(LogTemp, Warning, TEXT("[Wave] 스폰 위치를 찾지 못했습니다. 다음 간격에 다시 시도합니다."));
+			return;
+		}
+		SpawnLocation = Point->GetActorLocation();
+		SpawnRotation = Point->GetActorRotation();
+		UE_LOG(LogTemp, Warning, TEXT("[Wave] 랜덤 스폰 위치를 찾지 못해 TargetPoint를 사용합니다."));
 	}
 
 	// 스폰 옵션: 그 자리에 다른 것이 있으면 살짝 옮겨서라도 반드시 스폰
@@ -114,7 +130,7 @@ void AShooterGameMode::SpawnEnemy()
 	// SpawnActor<타입>(클래스, 위치, 회전, 옵션): 게임 중에 액터 생성 (Unity의 Instantiate(prefab, pos, rot))
 	// 적은 AutoPossessAI = PlacedInWorldOrSpawned 설정이라 스폰되자마자 AI 컨트롤러가 자동으로 붙는다
 	AShooterEnemy* Enemy = GetWorld()->SpawnActor<AShooterEnemy>(
-		EnemyClass, Point->GetActorLocation(), Point->GetActorRotation(), Params);
+		EnemyClass, SpawnLocation, SpawnRotation, Params);
 
 	if (Enemy)
 	{
@@ -126,6 +142,54 @@ void AShooterGameMode::SpawnEnemy()
 
 	--EnemiesLeftToSpawn;
 	BroadcastWaveState();
+}
+
+bool AShooterGameMode::FindRandomSpawnTransform(TSubclassOf<AShooterEnemy> EnemyClass, FVector& OutLocation, FRotator& OutRotation)
+{
+	// UNavigationSystemV1: 레벨의 NavMesh(AI가 걸어 다닐 수 있는 영역)를 다루는 시스템 (Unity의 NavMesh 클래스)
+	const APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0);
+	const UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
+	if (!Player || !NavSystem)
+	{
+		return false;
+	}
+
+	const FVector PlayerLocation = Player->GetActorLocation();
+	const float HalfHeight = EnemyClass->GetDefaultObject<AShooterEnemy>()->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+
+	// 맵 밖이나 벽 안처럼 못 쓰는 자리가 나올 수 있으므로 몇 번 다시 뽑는다
+	constexpr int32 MaxAttempts = 8;
+	for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
+	{
+		// 방향: 황금각(137.5도)씩 돌리면 몇 마리를 뽑아도 방향이 고르게 나뉜다. 규칙적으로 보이지 않게 흔들어 준다
+		NextSpawnAngle = FMath::Fmod(NextSpawnAngle + 137.5f + FMath::FRandRange(-20.f, 20.f), 360.f);
+
+		// 거리: 그냥 랜덤으로 뽑으면 면적이 좁은 안쪽에 몰린다. 제곱을 랜덤으로 뽑고 제곱근을 구해야 면적 기준으로 고르게 퍼진다
+		const float Radius = FMath::Sqrt(FMath::Lerp(FMath::Square(SpawnMinRadius), FMath::Square(SpawnMaxRadius), FMath::FRand()));
+		const FVector Direction = FRotator(0.f, NextSpawnAngle, 0.f).Vector();
+
+		// ProjectPointToNavigation: 그 지점 근처의 NavMesh 위 좌표를 찾는다. 위아래로 넉넉히 찾아 플레이어와 높이가 달라도 찾게 한다
+		FNavLocation NavLocation;
+		if (!NavSystem->ProjectPointToNavigation(PlayerLocation + Direction * Radius, NavLocation, FVector(100.f, 100.f, 500.f)))
+		{
+			continue;
+		}
+
+		// 플레이어까지 길이 끊겨 있으면(장애물 위 등) 적이 오지 못해 웨이브가 끝나지 않으므로 끝까지 이어지는 길만 쓴다
+		const UNavigationPath* Path = UNavigationSystemV1::FindPathToLocationSynchronously(this, NavLocation.Location, PlayerLocation);
+		if (!Path || !Path->IsValid() || Path->IsPartial())
+		{
+			continue;
+		}
+
+		// NavMesh 좌표는 바닥이고 액터 위치는 캡슐 중심이므로 캡슐 절반만큼 올린다. 회전은 플레이어를 보는 좌우 방향만 쓴다
+		OutLocation = NavLocation.Location + FVector(0.f, 0.f, HalfHeight);
+		OutRotation = FRotator(0.f, (PlayerLocation - OutLocation).Rotation().Yaw, 0.f);
+		UE_LOG(LogTemp, Log, TEXT("[Wave] 스폰: 방향 %.0f도, 거리 %.0f"), NextSpawnAngle, FVector::Dist2D(OutLocation, PlayerLocation));
+		return true;
+	}
+
+	return false;
 }
 
 TSubclassOf<AShooterEnemy> AShooterGameMode::PickEnemyClass() const

@@ -34,6 +34,9 @@ public class game_project : ModuleRules
         // Niagara 이펙트를 C++에서 스폰 (총구 화염). 헤더에는 전방 선언만 쓰므로 Private
         PrivateDependencyModuleNames.Add("Niagara");
 
+        // 스폰 위치가 걸어 다닐 수 있는 곳인지 NavMesh로 확인. 헤더에는 노출하지 않으므로 Private
+        PrivateDependencyModuleNames.Add("NavigationSystem");
+
         // Uncomment if you are using Slate UI
         // PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 
