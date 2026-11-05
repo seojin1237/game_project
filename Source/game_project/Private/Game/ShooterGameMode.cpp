@@ -195,12 +195,24 @@ void AShooterGameMode::HandleEnemyDied(AShooterCharacterBase* DeadCharacter)
 	{
 		UE_LOG(LogTemp, Log, TEXT("[Wave] %d웨이브 클리어!"), CurrentWave);
 
-		// 업그레이드 선택 화면을 띄운다. 띄우지 못하면(풀이 비었거나 등) 바로 다음 웨이브 예약
-		// 띄웠다면 플레이어가 카드를 고를 때 NotifyUpgradeChosen()이 호출되어 이어서 진행된다
-		if (!OfferUpgrades())
-		{
-			ScheduleNextWave();
-		}
+		// 바로 화면을 띄우면 마지막 적이 쓰러지는 모습이 멈춰 버리므로 잠깐 기다린다
+		GetWorldTimerManager().SetTimer(WaveTimerHandle, this, &AShooterGameMode::FinishWaveClear, UpgradeOfferDelay, false);
+	}
+}
+
+void AShooterGameMode::FinishWaveClear()
+{
+	// 기다리는 사이에 플레이어가 죽었으면 게임 오버 화면만 나와야 한다
+	if (IsPlayerDead())
+	{
+		return;
+	}
+
+	// 업그레이드 선택 화면을 띄운다. 띄우지 못하면(풀이 비었거나 등) 바로 다음 웨이브 예약
+	// 띄웠다면 플레이어가 카드를 고를 때 NotifyUpgradeChosen()이 호출되어 이어서 진행된다
+	if (!OfferUpgrades())
+	{
+		ScheduleNextWave();
 	}
 }
 

@@ -21,7 +21,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWaveStateChanged, int32, WaveNum
  * 게임 규칙 담당: 웨이브 진행.
  *  1) 시작 후 FirstWaveDelay초 대기 → 1웨이브 시작
  *  2) 웨이브 데이터(DT_Waves)의 적 수만큼, SpawnInterval초마다 1마리씩 스폰 (레벨의 TargetPoint 중 랜덤 위치)
- *  3) 그 웨이브의 적을 모두 처치하면 TimeBetweenWaves초 쉬고 다음 웨이브
+ *  3) 그 웨이브의 적을 모두 처치하면 UpgradeOfferDelay초 뒤 업그레이드 선택 → TimeBetweenWaves초 쉬고 다음 웨이브
  *  4) 표의 마지막 줄을 넘어가면 마지막 줄을 재사용하되 웨이브마다 적을 더 늘린다 (끝없는 생존)
  *  5) 플레이어가 죽으면 진행 중단
  */
@@ -81,6 +81,9 @@ protected:
 	// 현재 상태를 OnWaveStateChanged로 알림
 	void BroadcastWaveState();
 
+	// 웨이브 클리어 후 UpgradeOfferDelay초가 지나면 호출 → 업그레이드 선택 화면으로 넘어간다
+	void FinishWaveClear();
+
 	// 웨이브 클리어 후: 업그레이드 카드를 뽑아 선택 화면을 띄운다. 띄웠으면 true (못 띄우면 바로 다음 웨이브)
 	bool OfferUpgrades();
 
@@ -123,6 +126,12 @@ protected:
 	// meta=(ClampMin)  : 1 미만 입력 방지
 	UPROPERTY(EditDefaultsOnly, Category = "Upgrade", meta = (ClampMin = "1"))
 	int32 UpgradeChoiceCount = 3;
+
+	// 마지막 적이 죽은 뒤 업그레이드 화면이 뜨기까지 기다리는 시간(초). 쓰러지는 모습을 보고, 드롭 아이템을 먹을 틈을 준다
+	// EditDefaultsOnly, Category : 위와 동일
+	// meta=(ClampMin)            : SetTimer는 시간이 0 이하면 실행되지 않아 게임이 멈추므로 0보다 크게 제한
+	UPROPERTY(EditDefaultsOnly, Category = "Upgrade", meta = (ClampMin = "0.01"))
+	float UpgradeOfferDelay = 1.f;
 
 private:
 	// ===== 진행 상태 =====
