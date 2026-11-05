@@ -87,7 +87,14 @@ void AShooterGameMode::StartNextWave()
 	CurrentEnemyClass = Row->EnemyClass;
 	CurrentEnemyMix = Row->EnemyMix;
 
-	UE_LOG(LogTemp, Log, TEXT("[Wave] %d웨이브 시작 - 적 %d마리"), CurrentWave, EnemiesLeftToSpawn);
+	// 보스 웨이브면 평소 적에 보스 1마리를 더한다. %: 나머지 연산 (C#과 같음)
+	bBossPendingSpawn = BossClass && CurrentWave % BossWaveInterval == 0;
+	if (bBossPendingSpawn)
+	{
+		++EnemiesLeftToSpawn;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[Wave] %d웨이브 시작 - 적 %d마리%s"), CurrentWave, EnemiesLeftToSpawn, bBossPendingSpawn ? TEXT(" (보스 포함)") : TEXT(""));
 	BroadcastWaveState();
 
 	// SpawnInterval초마다 SpawnEnemy 반복. 첫 스폰은 바로(지연 0)
@@ -96,8 +103,8 @@ void AShooterGameMode::StartNextWave()
 
 void AShooterGameMode::SpawnEnemy()
 {
-	// 이번에 스폰할 적 종류 결정 (구성표가 있으면 비중대로 랜덤)
-	const TSubclassOf<AShooterEnemy> EnemyClass = PickEnemyClass();
+	// 이번에 스폰할 적 종류 결정. 보스가 남아 있으면 보스부터, 아니면 구성표의 비중대로 랜덤
+	const TSubclassOf<AShooterEnemy> EnemyClass = bBossPendingSpawn ? BossClass : PickEnemyClass();
 
 	// 다 스폰했거나, 설정이 비었거나, 플레이어가 죽었으면 스폰 중단
 	if (EnemiesLeftToSpawn <= 0 || !EnemyClass || IsPlayerDead())
@@ -138,8 +145,23 @@ void AShooterGameMode::SpawnEnemy()
 		// AddDynamic: 다이내믹 델리게이트용 등록 매크로. 연결할 함수는 UFUNCTION()이어야 한다
 		Enemy->OnCharacterDied.AddDynamic(this, &AShooterGameMode::HandleEnemyDied);
 		++EnemiesAlive;
+
+		// 보스를 잡아야 웨이브가 끝나므로, 지금까지 넘긴 보스 웨이브 수 = 잡은 보스 수다. 따로 세지 않아도 웨이브 번호로 알 수 있다
+		// 웨이브 시작 때 정해지는 값이라, 보스가 죽어도 진행 중인 웨이브의 남은 적은 강해지지 않고 다음 웨이브부터 강해진다
+		// 1번 적용할 때마다 GE의 배율이 곱해지므로 보스를 잡을수록 복리로 강해진다
+		const int32 BossesDefeated = BossClass ? (CurrentWave - 1) / BossWaveInterval : 0;
+		UAbilitySystemComponent* EnemyASC = Enemy->GetAbilitySystemComponent();
+		if (BossDefeatBuffEffect && EnemyASC && BossesDefeated > 0)
+		{
+			const FGameplayEffectSpecHandle Spec = EnemyASC->MakeOutgoingSpec(BossDefeatBuffEffect, 1.f, EnemyASC->MakeEffectContext());
+			for (int32 Count = 0; Spec.IsValid() && Count < BossesDefeated; ++Count)
+			{
+				EnemyASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+			}
+		}
 	}
 
+	bBossPendingSpawn = false;
 	--EnemiesLeftToSpawn;
 	BroadcastWaveState();
 }
@@ -330,6 +352,14 @@ void AShooterGameMode::BroadcastWaveState()
 {
 	// 구독한 모든 대상(HUD 등)에게 알림 (C#의 OnWaveStateChanged?.Invoke(wave, remaining))
 	OnWaveStateChanged.Broadcast(CurrentWave, GetEnemiesRemaining());
+}
+
+void AShooterGameMode::DebugSkipToWave(int32 Wave)
+{
+	// StartNextWave가 번호를 1 올리므로 1 작게 넣는다. 예약된 다음 웨이브는 취소해 두 웨이브가 겹치지 않게 한다
+	CurrentWave = FMath::Max(0, Wave - 1);
+	GetWorldTimerManager().ClearTimer(WaveTimerHandle);
+	StartNextWave();
 }
 
 void AShooterGameMode::DebugApplyUpgrade(int32 Index)

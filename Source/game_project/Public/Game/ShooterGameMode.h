@@ -6,6 +6,7 @@
 #include "ShooterGameMode.generated.h"
 
 class UDataTable;
+class UGameplayEffect;
 class AShooterEnemy;
 class AShooterCharacterBase;
 class UShooterUpgradeData;
@@ -23,7 +24,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWaveStateChanged, int32, WaveNum
  *  2) 웨이브 데이터(DT_Waves)의 적 수만큼, SpawnInterval초마다 1마리씩 스폰 (플레이어 주변 랜덤 위치. 찾지 못하면 레벨의 TargetPoint)
  *  3) 그 웨이브의 적을 모두 처치하면 UpgradeOfferDelay초 뒤 업그레이드 선택 → TimeBetweenWaves초 쉬고 다음 웨이브
  *  4) 표의 마지막 줄을 넘어가면 마지막 줄을 재사용하되 웨이브마다 적을 더 늘린다 (끝없는 생존)
- *  5) 플레이어가 죽으면 진행 중단
+ *  5) BossWaveInterval번째 웨이브마다 보스 1마리를 함께 스폰하고, 보스 웨이브를 넘길 때마다 이후 적이 강해진다
+ *  6) 플레이어가 죽으면 진행 중단
  */
 UCLASS()
 class GAME_PROJECT_API AShooterGameMode : public AGameModeBase
@@ -62,6 +64,11 @@ public:
 	// Exec : 콘솔 명령어로 호출 가능 (GameMode는 Exec가 동작하는 클래스 중 하나)
 	UFUNCTION(Exec)
 	void DebugApplyUpgrade(int32 Index);
+
+	// [테스트용] 콘솔(~)에 "DebugSkipToWave 5" 처럼 입력 → 그 웨이브를 바로 시작 (보스 확인에 몇 웨이브씩 기다리지 않게)
+	// Exec : 콘솔 명령어로 호출 가능
+	UFUNCTION(Exec)
+	void DebugSkipToWave(int32 Wave);
 
 protected:
 	// 게임 시작 시 호출 (Unity의 Start) → 스폰 지점 수집, 첫 웨이브 예약
@@ -128,6 +135,23 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Wave|Spawn", meta = (ClampMin = "0"))
 	float SpawnMaxRadius = 3500.f;
 
+	// 몇 웨이브마다 보스가 나올지. 5면 5, 10, 15웨이브
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능
+	// Category         : "Wave|Boss" 하위 그룹으로 표시
+	// meta=(ClampMin)  : 0이면 나머지 계산이 불가능하므로 1 이상으로 제한
+	UPROPERTY(EditDefaultsOnly, Category = "Wave|Boss", meta = (ClampMin = "1"))
+	int32 BossWaveInterval = 5;
+
+	// 보스로 스폰할 적 (BP_Enemy_Boss). 비워 두면 보스와 강화 없이 진행한다
+	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 지정 가능
+	// Category         : "Wave|Boss" 하위 그룹으로 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Wave|Boss")
+	TSubclassOf<AShooterEnemy> BossClass;
+
+	// 보스 웨이브를 하나 넘길 때마다 이후 적에게 1번씩 더 적용할 Instant GE. 강해지는 정도는 이 GE(GE_Enemy_BossDefeatBuff)에서 조절 (지정자 의미는 위와 동일)
+	UPROPERTY(EditDefaultsOnly, Category = "Wave|Boss")
+	TSubclassOf<UGameplayEffect> BossDefeatBuffEffect;
+
 	// 등장 가능한 업그레이드 카드 목록 (BP에서 DA_Upgrade_XXX 에셋들을 추가)
 	// EditDefaultsOnly : 블루프린트 클래스 기본값에서만 수정 가능
 	// Category         : "Upgrade" 그룹으로 표시
@@ -153,6 +177,7 @@ private:
 	int32 EnemiesLeftToSpawn = 0;   // 이번 웨이브에서 아직 스폰 안 된 적 수
 	int32 EnemiesAlive = 0;         // 스폰되어 살아있는 적 수
 	float NextSpawnAngle = 0.f;     // 다음 적을 스폰할 방향(도). 한쪽에 몰리지 않게 스폰마다 크게 돌린다
+	bool bBossPendingSpawn = false; // 이번 웨이브의 보스가 아직 스폰되지 않았는지
 
 	// 이번 웨이브 설정 (표에서 읽어온 값)
 	// UPROPERTY() : 가비지 컬렉터가 추적하도록 (클래스 참조도 UObject라 필요)
